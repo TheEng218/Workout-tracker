@@ -1,0 +1,2149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Barbell Medicine × Planet Fitness Coralville — 16-Week Hybrid Strength & Sub-2:00 Half-Marathon App</title>
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#0f172a" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #0f172a;
+      color: #f8fafc;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #1e293b;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #475569;
+      border-radius: 3px;
+    }
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-blue-500 selection:text-white">
+
+  <!-- Toast Notification -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 hidden max-w-sm rounded-xl border border-blue-500/40 bg-slate-900/95 px-4 py-3 text-sm font-medium text-white shadow-2xl backdrop-blur-md transition-all">
+    <div class="flex items-center gap-2.5">
+      <span id="toastIcon" class="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-500/20 text-blue-400">✓</span>
+      <span id="toastMessage">Saved!</span>
+    </div>
+  </div>
+
+  <!-- Reset Confirmation Modal -->
+  <div id="resetModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
+    <div class="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl">
+      <h3 class="text-lg font-bold text-white">Reset All Workout & Run Logs?</h3>
+      <p class="mt-2 text-sm text-slate-300">
+        This will restore your 16-week tracker back to the default -15% detraining baseline (170.0 lbs, 17.0% BF, and Week 1 starting e1RMs). You can export a JSON backup first if needed.
+      </p>
+      <div class="mt-5 flex items-center justify-end gap-3">
+        <button id="cancelResetBtn" type="button" class="rounded-lg border border-slate-700 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-700">
+          Cancel
+        </button>
+        <button id="confirmResetBtn" type="button" class="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-500">
+          Reset Everything
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import JSON Modal -->
+  <div id="importModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
+    <div class="w-full max-w-lg rounded-2xl border border-slate-700 bg-slate-900 p-6 shadow-2xl">
+      <h3 class="text-lg font-bold text-white">Import Backup JSON</h3>
+      <p class="mt-1 text-xs text-slate-400">Paste your exported JSON backup below or select a `.json` file.</p>
+      <input id="importFileInput" type="file" accept=".json,application/json" class="mt-3 block w-full text-xs text-slate-300 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-600 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-blue-500" />
+      <textarea id="importJsonTextarea" rows="5" placeholder='{"currentWeek": 1, ...}' class="mt-3 w-full rounded-xl border border-slate-700 bg-slate-950 p-3 font-mono text-xs text-slate-200 focus:border-blue-500 focus:outline-none"></textarea>
+      <div class="mt-4 flex items-center justify-end gap-3">
+        <button id="closeImportModalBtn" type="button" class="rounded-lg border border-slate-700 bg-slate-800 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-700">
+          Cancel
+        </button>
+        <button id="applyImportBtn" type="button" class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500">
+          Load Backup
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top Sticky Header -->
+  <header class="sticky top-0 z-30 border-b border-slate-800 bg-slate-900/95 backdrop-blur-md">
+    <div class="mx-auto max-w-7xl px-4 py-3 sm:px-6">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <!-- Brand & Location -->
+        <div class="flex items-center gap-3">
+          <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 font-extrabold text-white shadow-md">
+            BBM
+          </div>
+          <div>
+            <div class="flex flex-wrap items-center gap-2">
+              <h1 class="text-base font-extrabold tracking-tight text-white sm:text-lg">
+                BBM × Planet Fitness Hybrid Tracker
+              </h1>
+              <span id="headerBlockBadge" class="rounded-full bg-blue-500/20 px-2.5 py-0.5 text-xs font-semibold text-blue-300 border border-blue-500/30">
+                Block 1: Re-Acclimation
+              </span>
+            </div>
+            <p class="text-xs text-slate-400">
+              PF Coral Ridge Mall (Coralville, IA) • 29yo • 170 lb (17% → 15% BF) • Sub-2:00 HM (9:09/mi)
+            </p>
+          </div>
+        </div>
+
+        <!-- Active Week Selector & Rest Timer Bar -->
+        <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+          <div class="flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-950 px-2.5 py-1.5">
+            <button id="prevWeekBtn" type="button" title="Previous Week" class="rounded-lg px-2 py-0.5 text-xs font-bold text-slate-300 hover:bg-slate-800 hover:text-white">
+              ◀
+            </button>
+            <label for="weekSelector" class="sr-only">Select Week</label>
+            <select id="weekSelector" class="bg-transparent text-xs font-bold text-white focus:outline-none">
+              <!-- Populated by JS (Weeks 1-16) -->
+            </select>
+            <button id="nextWeekBtn" type="button" title="Next Week" class="rounded-lg px-2 py-0.5 text-xs font-bold text-slate-300 hover:bg-slate-800 hover:text-white">
+              ▶
+            </button>
+          </div>
+
+          <!-- Built-In Rest Timer -->
+          <div class="flex items-center gap-1.5 rounded-xl border border-slate-700 bg-slate-950 px-3 py-1.5">
+            <span class="text-xs font-medium text-slate-400">Rest:</span>
+            <span id="timerDisplay" class="font-mono text-sm font-extrabold text-emerald-400">03:00</span>
+            <button id="timerStartPauseBtn" type="button" class="rounded-md bg-emerald-600/20 px-2 py-0.5 text-xs font-semibold text-emerald-300 border border-emerald-500/30 hover:bg-emerald-600/30">
+              Start
+            </button>
+            <button id="timerPreset120Btn" type="button" class="rounded-md bg-slate-800 px-1.5 py-0.5 text-[11px] font-medium text-slate-300 hover:bg-slate-700">
+              2m
+            </button>
+            <button id="timerPreset180Btn" type="button" class="rounded-md bg-slate-800 px-1.5 py-0.5 text-[11px] font-medium text-slate-300 hover:bg-slate-700">
+              3m
+            </button>
+            <button id="timerResetBtn" type="button" class="rounded-md bg-slate-800 px-1.5 py-0.5 text-[11px] font-medium text-slate-400 hover:bg-slate-700 hover:text-white">
+              ↺
+            </button>
+            <button id="timerMuteBtn" type="button" title="Toggle Timer Sound" class="rounded-md bg-slate-800 px-1.5 py-0.5 text-[11px] font-medium text-slate-300 hover:bg-slate-700">
+              🔔
+            </button>
+          </div>
+
+          <!-- Backup / Export Controls -->
+          <div class="flex items-center gap-1.5">
+            <button id="quickCopyBackupBtn" type="button" title="Copy Backup to Clipboard (Save your log instantly)" class="rounded-lg border border-emerald-500/40 bg-emerald-950/40 px-2.5 py-1.5 text-xs font-semibold text-emerald-300 hover:bg-emerald-900/50">
+              📋 Copy Backup
+            </button>
+            <button id="exportCsvBtn" type="button" class="rounded-lg border border-slate-700 bg-slate-800 px-2.5 py-1.5 text-xs font-semibold text-slate-200 hover:bg-slate-700">
+              CSV
+            </button>
+            <button id="exportJsonBtn" type="button" class="rounded-lg border border-slate-700 bg-slate-800 px-2.5 py-1.5 text-xs font-semibold text-slate-200 hover:bg-slate-700">
+              Backup
+            </button>
+            <button id="openImportModalBtn" type="button" class="rounded-lg border border-slate-700 bg-slate-800 px-2.5 py-1.5 text-xs font-semibold text-slate-200 hover:bg-slate-700">
+              Import
+            </button>
+            <button id="openResetModalBtn" type="button" class="rounded-lg border border-rose-800/60 bg-rose-950/40 px-2.5 py-1.5 text-xs font-semibold text-rose-300 hover:bg-rose-900/50">
+              Reset
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Primary Navigation Tabs -->
+      <nav class="mt-3 flex flex-wrap gap-1.5 border-t border-slate-800/80 pt-2.5" aria-label="Main Tabs">
+        <button id="tabBtnGym" type="button" data-tab="gym" class="nav-tab-btn rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition-all sm:text-sm">
+          🏋️ Gym Floor Logger
+        </button>
+        <button id="tabBtnRun" type="button" data-tab="run" class="nav-tab-btn rounded-xl bg-slate-800/80 px-3.5 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition-all sm:text-sm">
+          🏃 16-Wk Half-Marathon Plan
+        </button>
+        <button id="tabBtnDash" type="button" data-tab="dash" class="nav-tab-btn rounded-xl bg-slate-800/80 px-3.5 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition-all sm:text-sm">
+          📊 e1RM & Body Recomp Charts
+        </button>
+        <button id="tabBtnCalc" type="button" data-tab="calc" class="nav-tab-btn rounded-xl bg-slate-800/80 px-3.5 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition-all sm:text-sm">
+          🧮 RPE & Plate Calculator
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="mx-auto max-w-7xl px-4 py-6 sm:px-6">
+
+    <!-- Top KPI Summary Strip -->
+    <section class="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+      <div class="rounded-2xl border border-slate-800 bg-slate-900/90 p-3.5 shadow-sm">
+        <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Active Week & Phase</div>
+        <div id="kpiWeekTitle" class="mt-1 text-base font-extrabold text-white">Week 1 of 16</div>
+        <div id="kpiWeekSub" class="mt-0.5 text-xs text-blue-400">On-Ramp (-15% Baseline)</div>
+      </div>
+      <div class="rounded-2xl border border-slate-800 bg-slate-900/90 p-3.5 shadow-sm">
+        <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Week Sets Completed</div>
+        <div id="kpiLiftsDone" class="mt-1 text-base font-extrabold text-emerald-400">0 / 12 Slots</div>
+        <div class="mt-0.5 text-xs text-slate-400">2 Required + 1 Optional Day</div>
+      </div>
+      <div class="rounded-2xl border border-slate-800 bg-slate-900/90 p-3.5 shadow-sm">
+        <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Week Running Target</div>
+        <div id="kpiRunTarget" class="mt-1 text-base font-extrabold text-sky-400">4.0 mi Long Run</div>
+        <div id="kpiRunSub" class="mt-0.5 text-xs text-slate-400">7.0 mi (2x) • 9.5 mi (3x)</div>
+      </div>
+      <div class="rounded-2xl border border-slate-800 bg-slate-900/90 p-3.5 shadow-sm">
+        <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Body Recomp Target</div>
+        <div id="kpiBodyTarget" class="mt-1 text-base font-extrabold text-amber-400">170.0 lb (17.0% BF)</div>
+        <div class="mt-0.5 text-xs text-slate-400">Goal: 166.0 lb @ 15.0% BF</div>
+      </div>
+      <div class="col-span-2 sm:col-span-1 rounded-2xl border border-slate-800 bg-slate-900/90 p-3.5 shadow-sm">
+        <div class="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Daily Nutrition Target</div>
+        <div id="kpiMacros" class="mt-1 text-base font-extrabold text-purple-300">2,400 kcal / 160g P</div>
+        <div class="mt-0.5 text-xs text-slate-400">265g C • 65g F • 35g Fiber</div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- VIEW 1: GYM FLOOR LOGGER (Strength Workouts)                        -->
+    <!-- =================================================================== -->
+    <section id="viewGym" class="space-y-5">
+      <!-- Weekly Non-Interference Schedule Banner -->
+      <div class="rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
+        <div class="flex flex-col justify-between gap-3 lg:flex-row lg:items-center">
+          <div>
+            <h2 class="text-sm font-bold uppercase tracking-wider text-blue-400">
+              Zero-Interference Weekly Split (Coral Ridge Mall Planet Fitness)
+            </h2>
+            <p class="mt-0.5 text-xs text-slate-300">
+              Heavy lower-body slots are separated by 48–72 hours from your weekend Long Run. Targets auto-scale from your most recent logged e1RM.
+            </p>
+            <div class="mt-2 flex flex-wrap items-center gap-2">
+              <button id="toggleAutoAdjustBtn" type="button" class="rounded-lg border border-emerald-500/40 bg-emerald-950/30 px-2.5 py-1 text-xs font-semibold text-emerald-300 hover:bg-emerald-900/40">
+                ⚡ Dynamic Target Scaling (from Prior Logs): ON
+              </button>
+              <span class="text-[11px] text-slate-400">Saves automatically to browser storage (use Backup/Import to move across devices)</span>
+            </div>
+          </div>
+          <!-- Day Selector Pills -->
+          <div class="flex flex-wrap gap-2">
+            <button id="dayBtn1" type="button" data-day="1" class="day-pill-btn rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-bold text-white shadow">
+              Day 1 (Mon): Squat + Bench [Required]
+            </button>
+            <button id="dayBtn2" type="button" data-day="2" class="day-pill-btn rounded-xl border border-slate-700 bg-slate-800 px-3.5 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-700">
+              Day 2 (Thu): Hinge + OHP [Required]
+            </button>
+            <button id="dayBtn3" type="button" data-day="3" class="day-pill-btn rounded-xl border border-slate-700 bg-slate-800 px-3.5 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-700">
+              Day 3 (Fri): Upper + GPP [Optional 3rd]
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Exercise Cards Container -->
+      <div id="gymSlotsContainer" class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <!-- Populated dynamically by JS -->
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- VIEW 2: 16-WEEK HALF-MARATHON RUN TRACKER                           -->
+    <!-- =================================================================== -->
+    <section id="viewRun" class="hidden space-y-6">
+      <!-- Heart Rate Zones Strip (Age 29 -> Tanaka HRmax 188 bpm) -->
+      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 class="text-sm font-bold text-white">
+              Barbell Medicine Conditioning Zones (Age 29 • Tanaka HRmax = 188 bpm)
+            </h2>
+            <p class="text-xs text-slate-400">
+              80/20 Polarized Distribution: Keep ~80% of weekly miles in Zone 2 (conversational) and ~20% in Zone 3–4 (Sub-2:00 HM pace = 9:09/mi).
+            </p>
+          </div>
+          <a href="https://www.barbellmedicine.com/resources/max-heart-rate-and-zone-calculator/" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold text-blue-400 hover:underline">
+            BBM HR Zone Guide ↗
+          </a>
+        </div>
+        <div class="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-5">
+          <div class="rounded-xl border border-slate-800 bg-slate-950 p-2.5">
+            <div class="text-[11px] font-bold text-slate-400">Zone 1 (63–72%)</div>
+            <div class="text-sm font-extrabold text-slate-200">118–135 bpm</div>
+            <div class="text-[11px] text-slate-400">RPE 3–4 • Warm-up/Recovery</div>
+          </div>
+          <div class="rounded-xl border border-emerald-500/40 bg-emerald-950/20 p-2.5">
+            <div class="text-[11px] font-bold text-emerald-400">Zone 2 (72–79%) • 80%</div>
+            <div class="text-sm font-extrabold text-white">135–148 bpm</div>
+            <div class="text-[11px] text-emerald-300">RPE 5–6 • Easy & Long Runs</div>
+          </div>
+          <div class="rounded-xl border border-amber-500/40 bg-amber-950/20 p-2.5">
+            <div class="text-[11px] font-bold text-amber-400">Zone 3 (79–85%)</div>
+            <div class="text-sm font-extrabold text-white">148–160 bpm</div>
+            <div class="text-[11px] text-amber-300">RPE 7 • Steady Tempo</div>
+          </div>
+          <div class="rounded-xl border border-orange-500/40 bg-orange-950/20 p-2.5">
+            <div class="text-[11px] font-bold text-orange-400">Zone 4 (85–90%) • 20%</div>
+            <div class="text-sm font-extrabold text-white">160–169 bpm</div>
+            <div class="text-[11px] text-orange-300">RPE 8–8.5 • 9:09/mi Intervals</div>
+          </div>
+          <div class="col-span-2 sm:col-span-1 rounded-xl border border-rose-500/30 bg-rose-950/20 p-2.5">
+            <div class="text-[11px] font-bold text-rose-400">Zone 5 (>90%)</div>
+            <div class="text-sm font-extrabold text-white">169–188 bpm</div>
+            <div class="text-[11px] text-rose-300">RPE 9–10 • Fast Strides/VO2</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active Week's 3 Run Sessions -->
+      <div id="activeWeekRunsContainer" class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <!-- Populated dynamically by JS -->
+      </div>
+
+      <!-- Full 16-Week Running Roadmap Table -->
+      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+        <h3 class="text-sm font-bold text-white">Complete 16-Week Sub-2:00 Half-Marathon Roadmap (Click Any Week to Jump)</h3>
+        <div class="mt-3 overflow-x-auto custom-scrollbar">
+          <table class="w-full text-left text-xs">
+            <thead>
+              <tr class="border-b border-slate-800 bg-slate-950 text-slate-300">
+                <th class="px-3 py-2.5 font-semibold">Week</th>
+                <th class="px-3 py-2.5 font-semibold">Block / Phase</th>
+                <th class="px-3 py-2.5 font-semibold">Run 1: Weekend Long Run (Priority #1)</th>
+                <th class="px-3 py-2.5 font-semibold">Run 2: Tempo / Goal Pace (Priority #2)</th>
+                <th class="px-3 py-2.5 font-semibold">Run 3: Easy Zone 2 (Priority #3)</th>
+                <th class="px-3 py-2.5 text-right font-semibold">2-Run Mi</th>
+                <th class="px-3 py-2.5 text-right font-semibold">3-Run Mi</th>
+                <th class="px-3 py-2.5 text-right font-semibold">Logged Mi</th>
+              </tr>
+            </thead>
+            <tbody id="runRoadmapTableBody" class="divide-y divide-slate-800/70">
+              <!-- Populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- VIEW 3: e1RM & BODY RECOMP DASHBOARD                                -->
+    <!-- =================================================================== -->
+    <section id="viewDash" class="hidden space-y-6">
+      <!-- Weekly Biometrics & Nutrition Logger Card -->
+      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+        <div class="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+          <div>
+            <h2 id="recompCardTitle" class="text-base font-bold text-white">
+              Week 1 Body Recomposition & Nutrition Check-In
+            </h2>
+            <p class="mt-0.5 text-xs text-slate-400">
+              Target trajectory: 170.0 lbs @ 17.0% BF → 166.0 lbs @ 15.0% BF (-0.25 lbs/wk) while preserving 141.1+ lbs Lean Body Mass.
+            </p>
+          </div>
+          <div class="flex flex-wrap items-end gap-3">
+            <div>
+              <label for="inputBodyweight" class="block text-[11px] font-semibold text-slate-400">Scale Weight (lb)</label>
+              <input id="inputBodyweight" type="number" step="0.1" min="100" max="350" class="mt-1 w-28 rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-sm font-bold text-white focus:border-blue-500 focus:outline-none" />
+            </div>
+            <div>
+              <label for="inputBodyFat" class="block text-[11px] font-semibold text-slate-400">Scale Body Fat (%)</label>
+              <input id="inputBodyFat" type="number" step="0.1" min="5" max="45" class="mt-1 w-24 rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-sm font-bold text-white focus:border-blue-500 focus:outline-none" />
+            </div>
+            <div>
+              <label for="inputWaist" class="block text-[11px] font-semibold text-slate-400">Waist (in)</label>
+              <input id="inputWaist" type="number" step="0.25" min="20" max="55" placeholder="32.5" class="mt-1 w-24 rounded-lg border border-slate-700 bg-slate-950 px-3 py-1.5 text-sm font-bold text-white focus:border-blue-500 focus:outline-none" />
+            </div>
+            <button id="saveBiometricsBtn" type="button" class="rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-500">
+              Save Week Biometrics
+            </button>
+          </div>
+        </div>
+
+        <!-- Fueling Mode Toggle (Standard Day vs Long Run Day) -->
+        <div class="mt-4 grid grid-cols-1 gap-3 border-t border-slate-800 pt-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div class="rounded-xl border border-slate-800 bg-slate-950 p-3">
+            <div class="text-[11px] font-semibold text-slate-400">Standard Day Calories</div>
+            <div class="mt-0.5 text-sm font-extrabold text-white">2,400 kcal (-250 deficit)</div>
+            <div class="text-[11px] text-slate-400">160g P • 265g C • 65g F • 35g Fiber</div>
+          </div>
+          <div class="rounded-xl border border-slate-800 bg-slate-950 p-3">
+            <div class="text-[11px] font-semibold text-sky-400">Long Run Day (≥7 mi) Fuel</div>
+            <div class="mt-0.5 text-sm font-extrabold text-white">2,650 kcal (Maintenance)</div>
+            <div class="text-[11px] text-slate-400">160g P • 320g C (+55g C) • 65g F</div>
+          </div>
+          <div class="rounded-xl border border-slate-800 bg-slate-950 p-3">
+            <div class="text-[11px] font-semibold text-emerald-400">Estimated Lean Body Mass</div>
+            <div id="dashLeanMassReadout" class="mt-0.5 text-sm font-extrabold text-white">141.1 lbs LBM</div>
+            <div id="dashFatMassReadout" class="text-[11px] text-slate-400">28.9 lbs Fat Mass (17.0%)</div>
+          </div>
+          <div class="rounded-xl border border-slate-800 bg-slate-950 p-3">
+            <div class="text-[11px] font-semibold text-amber-400">Weeks 15–16 Race Taper</div>
+            <div class="mt-0.5 text-sm font-extrabold text-white">2,650–2,800 kcal</div>
+            <div class="text-[11px] text-slate-400">Pause deficit; load 350g+ Carbs pre-race</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts Grid (Fixed Height Containers h-72 with maintainAspectRatio: false) -->
+      <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+          <h3 class="text-sm font-bold text-white">Live e1RM vs. -15% Detraining Baseline (lbs)</h3>
+          <p class="text-xs text-slate-400">Updates automatically whenever you log sets in the Gym Floor Logger.</p>
+          <div class="relative mt-3 h-72 w-full">
+            <canvas id="chartE1rm"></canvas>
+          </div>
+        </div>
+
+        <div class="rounded-2xl border border-slate-800 bg-slate-900 p-4">
+          <h3 class="text-sm font-bold text-white">16-Week Running Mileage & Long Run Build (mi)</h3>
+          <p class="text-xs text-slate-400">Compares Planned Long Run, 3-Run Weekly Total, and Your Logged Mileage.</p>
+          <div class="relative mt-3 h-72 w-full">
+            <canvas id="chartRunning"></canvas>
+          </div>
+        </div>
+
+        <div class="lg:col-span-2 rounded-2xl border border-slate-800 bg-slate-900 p-4">
+          <h3 class="text-sm font-bold text-white">16-Week Body Recomposition Trajectory (Weight & Body Fat %)</h3>
+          <p class="text-xs text-slate-400">Target path from 170.0 lbs (17.0% BF) to 166.0 lbs (15.0% BF) vs. Logged Check-Ins.</p>
+          <div class="relative mt-3 h-72 w-full">
+            <canvas id="chartBodyComp"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- VIEW 4: STANDALONE RPE & PLATE CALCULATOR + CORAL RIDGE PF GUIDE    -->
+    <!-- =================================================================== -->
+    <section id="viewCalc" class="hidden space-y-6">
+      <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <!-- Standalone Barbell Medicine e1RM Calculator -->
+        <div class="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+          <div class="flex items-center justify-between">
+            <h2 class="text-base font-bold text-white">Barbell Medicine Live e1RM & Prescription Calculator</h2>
+            <a href="https://www.barbellmedicine.com/resources/one-repetition-maximum-calculator/" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold text-blue-400 hover:underline">
+              BBM Official Tool ↗
+            </a>
+          </div>
+          <p class="mt-1 text-xs text-slate-400">
+            Enter any completed set to compute your theoretical 1-Rep Max and target working weights across reps and RPEs.
+          </p>
+
+          <div class="mt-4 grid grid-cols-3 gap-3">
+            <div>
+              <label for="calcWeightInput" class="block text-xs font-semibold text-slate-300">Weight Lifted (lb)</label>
+              <input id="calcWeightInput" type="number" step="2.5" value="150" class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm font-bold text-white focus:border-blue-500 focus:outline-none" />
+            </div>
+            <div>
+              <label for="calcRepsInput" class="block text-xs font-semibold text-slate-300">Reps (1–12)</label>
+              <select id="calcRepsInput" class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm font-bold text-white focus:border-blue-500 focus:outline-none">
+                <option value="1">1 Rep</option>
+                <option value="2">2 Reps</option>
+                <option value="3">3 Reps</option>
+                <option value="4">4 Reps</option>
+                <option value="5" selected>5 Reps</option>
+                <option value="6">6 Reps</option>
+                <option value="7">7 Reps</option>
+                <option value="8">8 Reps</option>
+                <option value="9">9 Reps</option>
+                <option value="10">10 Reps</option>
+                <option value="11">11 Reps</option>
+                <option value="12">12 Reps</option>
+              </select>
+            </div>
+            <div>
+              <label for="calcRpeInput" class="block text-xs font-semibold text-slate-300">RPE (6.5–10)</label>
+              <select id="calcRpeInput" class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm font-bold text-white focus:border-blue-500 focus:outline-none">
+                <option value="10">RPE 10 (0 RIR)</option>
+                <option value="9.5">RPE 9.5 (0.5 RIR)</option>
+                <option value="9">RPE 9.0 (1 RIR)</option>
+                <option value="8.5">RPE 8.5 (1.5 RIR)</option>
+                <option value="8" selected>RPE 8.0 (2 RIR)</option>
+                <option value="7.5">RPE 7.5 (2.5 RIR)</option>
+                <option value="7">RPE 7.0 (3 RIR)</option>
+                <option value="6.5">RPE 6.5 (3.5 RIR)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="mt-4 grid grid-cols-3 gap-3 rounded-xl border border-blue-500/30 bg-blue-950/20 p-3.5">
+            <div>
+              <div class="text-[11px] font-semibold text-blue-300">Estimated 1RM</div>
+              <div id="calcE1rmOutput" class="text-xl font-extrabold text-white">185 lb</div>
+            </div>
+            <div>
+              <div class="text-[11px] font-semibold text-slate-300">Single @ RPE 8 (92.2%)</div>
+              <div id="calcSingleAt8Output" class="text-xl font-extrabold text-emerald-400">170 lb</div>
+            </div>
+            <div>
+              <div class="text-[11px] font-semibold text-slate-300">Back-Off (-8% Load)</div>
+              <div id="calcBackoffOutput" class="text-xl font-extrabold text-amber-300">137.5 lb</div>
+            </div>
+          </div>
+
+          <div class="mt-4">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Target Weights from This e1RM</h3>
+            <div id="calcPrescriptionGrid" class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Coral Ridge Mall PF Plate & Smith Calculator -->
+        <div class="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+          <div class="flex items-center justify-between">
+            <h2 class="text-base font-bold text-white">Coral Ridge PF Plate-Loaded & Smith Calculator</h2>
+            <a href="https://www.planetfitness.com/gyms/coralville-ia/" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold text-blue-400 hover:underline">
+              PF Coralville Info ↗
+            </a>
+          </div>
+          <p class="mt-1 text-xs text-slate-400">
+            Calculates exact plates per side for the Coral Ridge Mall Plate-Loaded Hack Squat, Leg Press, Supine Press, or Smith Machine.
+          </p>
+
+          <div class="mt-4 grid grid-cols-2 gap-3">
+            <div>
+              <label for="plateTargetWeight" class="block text-xs font-semibold text-slate-300">Target Total Load (lb)</label>
+              <input id="plateTargetWeight" type="number" step="5" value="190" class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm font-bold text-white focus:border-blue-500 focus:outline-none" />
+            </div>
+            <div>
+              <label for="plateMachineType" class="block text-xs font-semibold text-slate-300">Apparatus Base Weight</label>
+              <select id="plateMachineType" class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm font-bold text-white focus:border-blue-500 focus:outline-none">
+                <option value="0" selected>PF Plate-Loaded (0 lb Plate-Only Tracking)</option>
+                <option value="20">PF Smith Machine (20 lb Starting Bar)</option>
+                <option value="45">Standard Sled / 45 lb Starting Resistance</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="mt-4 rounded-xl border border-slate-800 bg-slate-950 p-4">
+            <div class="flex items-center justify-between text-xs text-slate-400">
+              <span>Plates to Load <strong class="text-white">Per Side</strong>:</span>
+              <span id="platePerSideLabel" class="font-bold text-emerald-400">95.0 lbs / side</span>
+            </div>
+            <div id="plateVisualStack" class="mt-3 flex flex-wrap items-center gap-2">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+          <!-- Warm-up Ramp Generator for Target Weight -->
+          <div class="mt-4">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Barbell Medicine Recommended Warm-Up Ramp</h3>
+            <div id="plateWarmupList" class="mt-2 space-y-1.5 text-xs">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Full BBM RPE Percentage Reference Table -->
+      <div class="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+        <h3 class="text-sm font-bold text-white">Official Barbell Medicine RPE Percentage Chart (Reps 1–12 × RPE 6.5–10.0)</h3>
+        <div class="mt-3 overflow-x-auto custom-scrollbar">
+          <table class="w-full text-left text-xs">
+            <thead>
+              <tr class="border-b border-slate-800 bg-slate-950 text-slate-300">
+                <th class="px-3 py-2 font-semibold">Reps</th>
+                <th class="px-3 py-2 text-right font-semibold">RPE 10 (0 RIR)</th>
+                <th class="px-3 py-2 text-right font-semibold">RPE 9.5 (0.5 RIR)</th>
+                <th class="px-3 py-2 text-right font-semibold">RPE 9.0 (1 RIR)</th>
+                <th class="px-3 py-2 text-right font-semibold">RPE 8.5 (1.5 RIR)</th>
+                <th class="px-3 py-2 text-right font-semibold text-blue-400">RPE 8.0 (2 RIR)</th>
+                <th class="px-3 py-2 text-right font-semibold">RPE 7.5 (2.5 RIR)</th>
+                <th class="px-3 py-2 text-right font-semibold">RPE 7.0 (3 RIR)</th>
+                <th class="px-3 py-2 text-right font-semibold">RPE 6.5 (3.5 RIR)</th>
+              </tr>
+            </thead>
+            <tbody id="rpeReferenceTableBody" class="divide-y divide-slate-800/70">
+              <!-- Populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    // =========================================================================
+    // 1. BARBELL MEDICINE RPE PERCENTAGE TABLE & CORE CONSTANTS
+    // =========================================================================
+    const RPE_TABLE = {
+      1:  { "10": 1.000, "9.5": 0.978, "9": 0.955, "8.5": 0.939, "8": 0.922, "7.5": 0.907, "7": 0.892, "6.5": 0.878 },
+      2:  { "10": 0.955, "9.5": 0.939, "9": 0.922, "8.5": 0.907, "8": 0.892, "7.5": 0.878, "7": 0.863, "6.5": 0.850 },
+      3:  { "10": 0.922, "9.5": 0.907, "9": 0.892, "8.5": 0.878, "8": 0.863, "7.5": 0.850, "7": 0.837, "6.5": 0.824 },
+      4:  { "10": 0.892, "9.5": 0.878, "9": 0.863, "8.5": 0.850, "8": 0.837, "7.5": 0.824, "7": 0.811, "6.5": 0.799 },
+      5:  { "10": 0.863, "9.5": 0.850, "9": 0.837, "8.5": 0.824, "8": 0.811, "7.5": 0.799, "7": 0.786, "6.5": 0.774 },
+      6:  { "10": 0.837, "9.5": 0.824, "9": 0.811, "8.5": 0.799, "8": 0.786, "7.5": 0.774, "7": 0.762, "6.5": 0.751 },
+      7:  { "10": 0.811, "9.5": 0.799, "9": 0.786, "8.5": 0.774, "8": 0.762, "7.5": 0.751, "7": 0.739, "6.5": 0.723 },
+      8:  { "10": 0.786, "9.5": 0.774, "9": 0.762, "8.5": 0.751, "8": 0.739, "7.5": 0.723, "7": 0.707, "6.5": 0.698 },
+      9:  { "10": 0.762, "9.5": 0.751, "9": 0.739, "8.5": 0.723, "8": 0.707, "7.5": 0.698, "7": 0.680, "6.5": 0.667 },
+      10: { "10": 0.739, "9.5": 0.723, "9": 0.707, "8.5": 0.698, "8": 0.680, "7.5": 0.667, "7": 0.653, "6.5": 0.640 },
+      11: { "10": 0.707, "9.5": 0.698, "9": 0.680, "8.5": 0.667, "8": 0.653, "7.5": 0.640, "7": 0.626, "6.5": 0.613 },
+      12: { "10": 0.680, "9.5": 0.667, "9": 0.653, "8.5": 0.640, "8": 0.626, "7.5": 0.613, "7": 0.600, "6.5": 0.586 }
+    };
+
+    function getRpePct(reps, rpe) {
+      const r = Math.min(12, Math.max(1, Math.round(Number(reps) || 5)));
+      const rpeKey = String(Number(rpe));
+      if (RPE_TABLE[r] && RPE_TABLE[r][rpeKey]) {
+        return RPE_TABLE[r][rpeKey];
+      }
+      const rawPct = 1 - ((Number(reps) - 1) + (10 - Number(rpe))) * 0.029;
+      return Math.max(0.45, Math.min(1.0, rawPct));
+    }
+
+    function calculateE1RM(weight, reps, rpe) {
+      const w = Number(weight);
+      if (!w || w <= 0) return 0;
+      const pct = getRpePct(reps, rpe);
+      return Math.round(w / pct);
+    }
+
+    function roundToIncrement(val, inc) {
+      return Math.round(val / inc) * inc;
+    }
+
+    // Core Movement Slots calibrated from user's Drive logs (-15% off)
+    const SLOT_DEFINITIONS = [
+      // Day 1 (Monday - Required)
+      {
+        id: "d1_s1",
+        day: 1,
+        slotName: "Primary Squat",
+        defaultExercise: "Plate-Loaded Hack Squat",
+        options: ["Plate-Loaded Hack Squat", "Smith Machine Squat", "Plate-Loaded Leg Press", "Heavy Goblet Squat"],
+        priorLog: "195 lb × 4 @ RPE 8.5 (e1RM 222 lb)",
+        startE1rm: 189,
+        increment: 5,
+        warmupSets: 3,
+        role: "comp",
+        notes: "Coral Ridge PF Plate-Loaded Hack Squat. Rest 3 min; separated 48h+ from Long Run."
+      },
+      {
+        id: "d1_s2",
+        day: 1,
+        slotName: "Primary Horizontal Push",
+        defaultExercise: "Flat DB Bench Press (per hand)",
+        options: ["Flat DB Bench Press (per hand)", "Plate-Loaded Supine Bench Press", "Smith Machine 2-Ct Paused Bench", "Pin-Loaded Chest Press"],
+        priorLog: "70 lb × 5 @ RPE 8.5 (e1RM 82 lb/hand)",
+        startE1rm: 70,
+        increment: 2.5,
+        warmupSets: 3,
+        role: "comp",
+        notes: "Weight is per dumbbell. Pause 1 count on chest before pressing."
+      },
+      {
+        id: "d1_s3",
+        day: 1,
+        slotName: "Primary Horizontal Pull",
+        defaultExercise: "Seated Cable / Chest-Supported Row",
+        options: ["Seated Cable / Chest-Supported Row", "Chest-Supported Machine Row", "1-Arm Dumbbell Row"],
+        priorLog: "120 lb × 10 @ RPE 9.5 (e1RM 166 lb)",
+        startE1rm: 141,
+        increment: 5,
+        warmupSets: 2,
+        role: "pull",
+        notes: "Drive elbows back and squeeze shoulder blades; use double progression."
+      },
+      {
+        id: "d1_s4",
+        day: 1,
+        slotName: "Hamstring Isolation",
+        defaultExercise: "Seated Hamstring Curl",
+        options: ["Seated Hamstring Curl", "Lying Leg Curl", "45° Back Extension (Hamstring Bias)"],
+        priorLog: "140 lb × 11 @ RPE 10 (e1RM 198 lb)",
+        startE1rm: 168,
+        increment: 5,
+        warmupSets: 1,
+        role: "iso",
+        notes: "2-second controlled eccentric to build knee & hamstring resilience for speed work."
+      },
+      // Day 2 (Thursday - Required, 48-72h pre-Long Run)
+      {
+        id: "d2_s1",
+        day: 2,
+        slotName: "Primary Hinge",
+        defaultExercise: "Romanian Deadlift (Smith or Heavy DB)",
+        options: ["Romanian Deadlift (Smith or Heavy DB)", "Smith Machine Block / Rack Pull", "45° Weighted Hyperextension"],
+        priorLog: "195 lb × 12 @ RPE 8.5 (e1RM 279 lb)",
+        startE1rm: 237,
+        increment: 5,
+        warmupSets: 3,
+        role: "sec",
+        notes: "Keep 2–3 reps in reserve (RPE 7–8) so hamstrings & low back are fresh for Sat/Sun Long Run."
+      },
+      {
+        id: "d2_s2",
+        day: 2,
+        slotName: "Primary Vertical Push",
+        defaultExercise: "Seated DB Shoulder Press (per hand)",
+        options: ["Seated DB Shoulder Press (per hand)", "Pin-Loaded Machine Shoulder Press", "Smith Machine Overhead Press"],
+        priorLog: "35 lb × 10 @ RPE 9.5 (e1RM 48 lb/hand)",
+        startE1rm: 41,
+        increment: 2.5,
+        warmupSets: 2,
+        role: "sec",
+        notes: "Lower dumbbells all the way to shoulders; keep ribcage stacked."
+      },
+      {
+        id: "d2_s3",
+        day: 2,
+        slotName: "Secondary Squat",
+        defaultExercise: "Plate-Loaded Leg Press",
+        options: ["Plate-Loaded Leg Press", "Smith Machine Split Squat", "Leg Extension Machine"],
+        priorLog: "360 lb × 11 @ RPE 8.5 (e1RM 498 lb)",
+        startE1rm: 423,
+        increment: 5,
+        warmupSets: 2,
+        role: "sec",
+        notes: "Coral Ridge PF 45° Plate-Loaded Leg Press. Capped @ RPE 7–7.5 to protect running recovery."
+      },
+      {
+        id: "d2_s4",
+        day: 2,
+        slotName: "Primary Vertical Pull",
+        defaultExercise: "2-Grip Lat Pulldown",
+        options: ["2-Grip Lat Pulldown", "Assisted Pull-Up (Elevate Machine)", "Neutral-Grip Cable Pulldown"],
+        priorLog: "100 lb × 10 @ RPE 9.5 (e1RM 138 lb)",
+        startE1rm: 117,
+        increment: 5,
+        warmupSets: 2,
+        role: "pull",
+        notes: "Sets 1–2 wide overhand (1.5x shoulder width), final set underhand chin-up grip."
+      },
+      // Day 3 (Friday - Optional 3rd Full-Body Upper/Hypertrophy + GPP)
+      {
+        id: "d3_s1",
+        day: 3,
+        slotName: "Secondary Horizontal Push",
+        defaultExercise: "Incline DB Bench Press (per hand)",
+        options: ["Incline DB Bench Press (per hand)", "Incline Smith Machine Press", "Dual-Cable Chest Press"],
+        priorLog: "45 lb × 10 @ RPE 8.5 (e1RM 60 lb/hand)",
+        startE1rm: 51,
+        increment: 2.5,
+        warmupSets: 2,
+        role: "sec",
+        notes: "Optional 3rd lifting day; zero heavy lower-body fatigue before weekend Long Run."
+      },
+      {
+        id: "d3_s2",
+        day: 3,
+        slotName: "Upper Back & Rear Delt",
+        defaultExercise: "Rope Facepull & Cable Upper Back Row",
+        options: ["Rope Facepull & Cable Upper Back Row", "Reverse Pec Deck Machine", "Incline DB Rear Delt Fly"],
+        priorLog: "Derived from Cable Row Baseline",
+        startE1rm: 92,
+        increment: 5,
+        warmupSets: 1,
+        role: "iso",
+        notes: "Pull rope toward forehead with high elbows; 90 sec rest."
+      },
+      {
+        id: "d3_s3",
+        day: 3,
+        slotName: "Arms & Lateral Delt Superset",
+        defaultExercise: "Bayesian Cable Curl + Triceps Pressdown + Lateral Raise",
+        options: ["Bayesian Cable Curl + Triceps Pressdown + Lateral Raise", "EZ-Bar Curl + Skullcrusher + DB Lateral Raise"],
+        priorLog: "25–30 lb Isolation Baseline",
+        startE1rm: 35,
+        increment: 2.5,
+        warmupSets: 1,
+        role: "iso",
+        notes: "Perform as an A1/A2/A3 superset with 60–90s rest to pack upper-body hypertrophy into 10 mins."
+      },
+      {
+        id: "d3_s4",
+        day: 3,
+        slotName: "Calf & Trunk GPP Block",
+        defaultExercise: "Plate-Loaded Calf Raise + Cable Crunch",
+        options: ["Plate-Loaded Calf Raise + Cable Crunch", "Seated Calf Raise + Roman Chair Leg Raise"],
+        priorLog: "170 lb Calf Raise Baseline",
+        startE1rm: 160,
+        increment: 5,
+        warmupSets: 1,
+        role: "iso",
+        notes: "Heavy calf work improves Achilles stiffness and running economy for your Sub-2:00 Half Marathon."
+      }
+    ];
+
+    // 16-Week Running & Body Comp Roadmap Data
+    const SIXTEEN_WEEK_PLAN = [
+      { wk: 1,  phase: "Block 1: Re-Acclimation", r1: "4.0 mi Easy Zone 2 (135–148 bpm, ~11:00–11:20/mi @ RPE 5–6)", r2: "3.0 mi: 1 mi easy + 4×400m @ 9:45/mi (RPE 7) + 1 mi easy", r3: "2.5 mi Easy Zone 2 + 8m Back/Ab GPP", m1: 4.0, m2: 3.0, m3: 2.5, bw: 170.0, bf: 17.0 },
+      { wk: 2,  phase: "Block 1: Re-Acclimation", r1: "4.5 mi Easy Zone 2 (135–148 bpm, ~10:55–11:15/mi @ RPE 5–6)", r2: "3.0 mi: 1 mi easy + 1.0 mi Tempo @ 10:00/mi (RPE 7) + 1 mi easy", r3: "2.5 mi Easy Zone 2 + 8m Back/Ab GPP", m1: 4.5, m2: 3.0, m3: 2.5, bw: 169.7, bf: 16.9 },
+      { wk: 3,  phase: "Block 1: Re-Acclimation", r1: "5.5 mi Easy Zone 2 (135–148 bpm, conversational @ RPE 6)", r2: "3.5 mi: 1 mi easy + 1.5 mi Tempo @ 9:50/mi (RPE 7.5) + 1 mi easy", r3: "3.0 mi Easy Zone 2 + 8m Back/Ab GPP", m1: 5.5, m2: 3.5, m3: 3.0, bw: 169.4, bf: 16.7 },
+      { wk: 4,  phase: "Block 1: Pivot / Deload", r1: "4.5 mi Easy Zone 2 Cutback (135–145 bpm @ RPE 5)", r2: "3.0 mi Easy + 4×20s crisp strides @ 9:00/mi pace", r3: "2.5 mi Easy Recovery Run (RPE 5)", m1: 4.5, m2: 3.0, m3: 2.5, bw: 169.1, bf: 16.6 },
+      { wk: 5,  phase: "Block 2: Threshold Build", r1: "6.5 mi Zone 2 (135–148 bpm, finish last 0.5 mi @ 9:40/mi)", r2: "4.0 mi: 1 mi WU + 2×1.0 mi @ 9:30/mi (RPE 7.5–8) + 1 mi CD", r3: "3.0 mi Easy Zone 2 + 8m Back/Ab GPP", m1: 6.5, m2: 4.0, m3: 3.0, bw: 168.8, bf: 16.4 },
+      { wk: 6,  phase: "Block 2: Threshold Build", r1: "7.5 mi Steady Zone 2 (138–148 bpm @ RPE 6)", r2: "4.0 mi: 1 mi WU + 2.0 mi Continuous Tempo @ 9:25/mi (RPE 8) + 1 mi CD", r3: "3.5 mi Easy Zone 2 + 8m Back/Ab GPP", m1: 7.5, m2: 4.0, m3: 3.5, bw: 168.5, bf: 16.3 },
+      { wk: 7,  phase: "Block 2: Threshold Build", r1: "8.5 mi Zone 2 (last 1.0 mi @ 9:15/mi HM Goal Rhythm)", r2: "4.5 mi: 1 mi WU + 3×1.0 mi @ 9:15/mi (RPE 8, 2m jog) + 0.5 mi CD", r3: "3.5 mi Easy Zone 2 + 8m Back/Ab GPP", m1: 8.5, m2: 4.5, m3: 3.5, bw: 168.2, bf: 16.1 },
+      { wk: 8,  phase: "Block 2: Pivot / Deload", r1: "6.0 mi Easy Cutback Run (Zone 2, 135–145 bpm @ RPE 5.5)", r2: "3.5 mi: 1 mi easy + 1.5 mi @ 9:15/mi + 1 mi easy", r3: "3.0 mi Easy Zone 2 (RPE 5)", m1: 6.0, m2: 3.5, m3: 3.0, bw: 167.9, bf: 16.0 },
+      { wk: 9,  phase: "Block 3: HM Goal Pace", r1: "9.0 mi Progression (7.5 mi Zone 2 + 1.5 mi @ 9:09/mi Goal Pace)", r2: "4.5 mi: 1 mi WU + 2.5 mi @ 9:09/mi HM Goal Pace (RPE 8) + 1 mi CD", r3: "3.5 mi Easy Zone 2 + 8m Back/Ab GPP", m1: 9.0, m2: 4.5, m3: 3.5, bw: 167.6, bf: 15.8 },
+      { wk: 10, phase: "Block 3: HM Goal Pace", r1: "10.0 mi Aerobic Endurance (Zone 2 @ RPE 6; test race carb gel)", r2: "5.0 mi: 1 mi WU + 3×1.0 mi @ 9:00/mi (Zone 4, RPE 8.5) + 1 mi CD", r3: "4.0 mi Easy Zone 2 + 8m Back/Ab GPP", m1: 10.0, m2: 5.0, m3: 4.0, bw: 167.3, bf: 15.7 },
+      { wk: 11, phase: "Block 3: HM Goal Pace", r1: "11.0 mi Long Run (9.0 mi Zone 2 + final 2.0 mi @ 9:09/mi Pace)", r2: "5.0 mi: 1 mi WU + 3.0 mi Tempo @ 9:09/mi (RPE 8) + 1 mi CD", r3: "4.0 mi Easy Zone 2 + 8m Back/Ab GPP", m1: 11.0, m2: 5.0, m3: 4.0, bw: 167.0, bf: 15.5 },
+      { wk: 12, phase: "Block 3: Pivot / Deload", r1: "8.0 mi Easy Zone 2 Cutback (135–145 bpm @ RPE 5.5)", r2: "4.0 mi: 1 mi easy + 2×1.0 mi @ 9:09/mi + 1 mi easy", r3: "3.0 mi Easy Zone 2 Recovery (RPE 5)", m1: 8.0, m2: 4.0, m3: 3.0, bw: 166.8, bf: 15.4 },
+      { wk: 13, phase: "Block 4: Peak Specificity", r1: "11.5 mi Long Run (8.5 mi Zone 2 + 3.0 mi @ 9:09/mi HM Goal Pace)", r2: "5.5 mi: 1 mi WU + 3.5 mi @ 9:05–9:09/mi (RPE 8–8.5) + 1 mi CD", r3: "4.0 mi Easy Zone 2 (RPE 5–6)", m1: 11.5, m2: 5.5, m3: 4.0, bw: 166.5, bf: 15.3 },
+      { wk: 14, phase: "Block 4: Peak Mileage", r1: "12.0 mi Peak Long Run (9.5 mi Zone 2 + 2.5 mi @ 9:09/mi HM Pace)", r2: "5.0 mi: 1 mi WU + 3×1.0 mi @ 9:00/mi + 1 mi CD", r3: "3.5 mi Easy Zone 2 (RPE 5.5)", m1: 12.0, m2: 5.0, m3: 3.5, bw: 166.3, bf: 15.1 },
+      { wk: 15, phase: "Block 4: Race Taper 1", r1: "8.0 mi Taper Long Run (6.5 mi Zone 2 + 1.5 mi @ 9:09/mi HM Pace)", r2: "4.0 mi: 1 mi WU + 2.0 mi @ 9:09/mi (RPE 7) + 1 mi easy", r3: "3.0 mi Easy Shakeout Run (RPE 5)", m1: 8.0, m2: 4.0, m3: 3.0, bw: 166.0, bf: 15.0 },
+      { wk: 16, phase: "Block 4: Race Week (<2:00)", r1: "13.1 mi HALF MARATHON RACE: Target < 1:59:59 (9:09/mi avg pace)", r2: "2.5 mi Taper Tune-Up (1.5 mi easy + 0.5 mi @ 9:09/mi + 0.5 mi easy)", r3: "1.5 mi Shakeout Jog (RPE 4) — Eat Maintenance Carbs", m1: 13.1, m2: 2.5, m3: 1.5, bw: 166.0, bf: 15.0 }
+    ];
+
+    function getWeekPrescriptionForRole(wk, role) {
+      let progMult = 1.0;
+      let sets = 3, reps = 5, rpe = 7.0;
+      if (wk <= 4) {
+        progMult = wk < 4 ? 1.0 + (wk - 1) * 0.015 : 0.96;
+        sets = wk < 4 ? 3 : 2;
+        if (role === "comp") { reps = 5; rpe = wk === 1 ? 7.0 : (wk === 2 ? 7.5 : (wk === 3 ? 8.0 : 6.5)); }
+        else if (role === "sec") { reps = 8; rpe = wk === 1 ? 7.0 : (wk < 4 ? 7.5 : 6.5); }
+        else if (role === "pull") { reps = 10; rpe = wk === 1 ? 7.5 : (wk < 4 ? 8.0 : 7.0); }
+        else { reps = 12; rpe = wk < 4 ? 8.0 : 7.0; }
+      } else if (wk <= 8) {
+        progMult = wk < 8 ? 1.04 + (wk - 5) * 0.015 : 1.00;
+        sets = wk < 8 ? (role === "comp" ? 4 : 3) : 2;
+        if (role === "comp") { reps = 4; rpe = wk < 8 ? 8.0 : 7.0; }
+        else if (role === "sec") { reps = 7; rpe = wk < 8 ? 8.0 : 7.0; }
+        else if (role === "pull") { reps = 10; rpe = wk < 8 ? 8.5 : 7.5; }
+        else { reps = 12; rpe = wk < 8 ? 8.5 : 7.5; }
+      } else if (wk <= 12) {
+        progMult = wk < 12 ? 1.08 + (wk - 9) * 0.015 : 1.04;
+        sets = wk < 12 ? (role === "comp" ? 4 : 3) : 2;
+        if (role === "comp") { reps = wk < 12 ? 3 : 4; rpe = wk < 12 ? 8.0 : 7.0; }
+        else if (role === "sec") { reps = 6; rpe = wk < 12 ? 8.0 : 7.0; }
+        else if (role === "pull") { reps = 8; rpe = wk < 12 ? 8.5 : 7.5; }
+        else { reps = 10; rpe = wk < 12 ? 8.5 : 7.5; }
+      } else {
+        progMult = wk <= 14 ? 1.11 : (wk === 15 ? 1.08 : 1.04);
+        sets = wk <= 14 ? 3 : (wk === 15 ? 2 : 1);
+        if (role === "comp") { reps = 4; rpe = wk <= 14 ? 8.0 : (wk === 15 ? 7.5 : 6.5); }
+        else if (role === "sec") { reps = 6; rpe = wk <= 14 ? 7.5 : 7.0; }
+        else if (role === "pull") { reps = 10; rpe = wk <= 14 ? 8.0 : 7.0; }
+        else { reps = 12; rpe = wk <= 14 ? 8.0 : 7.0; }
+      }
+      return { progMult, sets, reps, rpe };
+    }
+
+    // =========================================================================
+    // 2. STATE MANAGEMENT & LOCALSTORAGE PERSISTENCE
+    // =========================================================================
+    const STORAGE_KEY = "bbm_pf_coralville_tracker_v1";
+
+    function createDefaultState() {
+      const state = {
+        currentWeek: 1,
+        currentDay: 1,
+        activeTab: "gym",
+        soundMuted: false,
+        autoAdjustTargets: true,
+        selectedExercises: {},
+        strengthLogs: {}, // key: `w${wk}_${slotId}` -> { weight, reps, rpe, setsDone: [] }
+        runLogs: {},      // key: `w${wk}_r${runIdx}` -> { miles, minutes, completed }
+        bodyLogs: {}      // key: `w${wk}` -> { bw, bf, waist }
+      };
+      SLOT_DEFINITIONS.forEach(s => {
+        state.selectedExercises[s.id] = s.defaultExercise;
+      });
+      // Seed Week 1 initial biometrics so dashboard shows current baseline right away
+      state.bodyLogs["w1"] = { bw: 170.0, bf: 17.0, waist: 32.5 };
+      return state;
+    }
+
+    let appState = createDefaultState();
+
+    // IndexedDB Dual-Layer Storage Helper (survives when mobile file:// isolates localStorage)
+    const IDB_NAME = "BBM_PF_Tracker_DB";
+    const IDB_STORE = "workout_state";
+
+    function openIdb() {
+      return new Promise((resolve) => {
+        try {
+          if (!window.indexedDB) return resolve(null);
+          const req = indexedDB.open(IDB_NAME, 1);
+          req.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains(IDB_STORE)) {
+              db.createObjectStore(IDB_STORE);
+            }
+          };
+          req.onsuccess = (e) => resolve(e.target.result);
+          req.onerror = () => resolve(null);
+        } catch (err) {
+          resolve(null);
+        }
+      });
+    }
+
+    function saveToIdb(stateObj) {
+      openIdb().then((db) => {
+        if (!db) return;
+        try {
+          const tx = db.transaction(IDB_STORE, "readwrite");
+          const store = tx.objectStore(IDB_STORE);
+          store.put(JSON.stringify(stateObj), "current_state");
+        } catch (e) {}
+      });
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          appState = Object.assign(createDefaultState(), parsed);
+          saveToIdb(appState);
+        } else {
+          // Attempt IndexedDB recovery
+          openIdb().then((db) => {
+            if (!db) return;
+            try {
+              const tx = db.transaction(IDB_STORE, "readonly");
+              const store = tx.objectStore(IDB_STORE);
+              const getReq = store.get("current_state");
+              getReq.onsuccess = () => {
+                if (getReq.result) {
+                  try {
+                    const parsedIdb = JSON.parse(getReq.result);
+                    appState = Object.assign(createDefaultState(), parsedIdb);
+                    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(appState)); } catch(e){}
+                    renderAll();
+                    showToast("Restored workout data from local database!");
+                  } catch(e){}
+                }
+              };
+            } catch(e){}
+          });
+        }
+      } catch (e) {
+        // Fallback to in-memory state
+      }
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+      } catch (e) {}
+      saveToIdb(appState);
+    }
+
+    function showToast(msg) {
+      const container = document.getElementById("toastContainer");
+      const textEl = document.getElementById("toastMessage");
+      if (!container || !textEl) return;
+      textEl.textContent = msg;
+      container.classList.remove("hidden");
+      clearTimeout(window.__toastTimer);
+      window.__toastTimer = setTimeout(() => {
+        container.classList.add("hidden");
+      }, 2600);
+    }
+
+    // =========================================================================
+    // 3. BUILT-IN REST TIMER & SYNTHESIZED WEB AUDIO BEEP
+    // =========================================================================
+    let timerRemainingSec = 180;
+    let timerIntervalId = null;
+    let timerRunning = false;
+
+    function playTimerBeep() {
+      if (appState.soundMuted) return;
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        [523.25, 659.25, 783.99].forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.14);
+          gain.gain.setValueAtTime(0.15, ctx.currentTime + idx * 0.14);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.14 + 0.25);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(ctx.currentTime + idx * 0.14);
+          osc.stop(ctx.currentTime + idx * 0.14 + 0.26);
+        });
+      } catch (e) {
+        // Ignore audio errors
+      }
+    }
+
+    function formatTimer(sec) {
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+    }
+
+    function updateTimerUI() {
+      const disp = document.getElementById("timerDisplay");
+      const btn = document.getElementById("timerStartPauseBtn");
+      const muteBtn = document.getElementById("timerMuteBtn");
+      if (disp) disp.textContent = formatTimer(timerRemainingSec);
+      if (btn) btn.textContent = timerRunning ? "Pause" : "Start";
+      if (muteBtn) muteBtn.textContent = appState.soundMuted ? "🔕" : "🔔";
+    }
+
+    function startTimer(durationSec) {
+      if (typeof durationSec === "number") {
+        timerRemainingSec = durationSec;
+      }
+      if (timerIntervalId) clearInterval(timerIntervalId);
+      timerRunning = true;
+      updateTimerUI();
+      timerIntervalId = setInterval(() => {
+        if (timerRemainingSec > 0) {
+          timerRemainingSec--;
+          updateTimerUI();
+        } else {
+          clearInterval(timerIntervalId);
+          timerIntervalId = null;
+          timerRunning = false;
+          updateTimerUI();
+          playTimerBeep();
+          showToast("Rest timer complete — ready for your next set!");
+        }
+      }, 1000);
+    }
+
+    function toggleTimer() {
+      if (timerRunning) {
+        clearInterval(timerIntervalId);
+        timerIntervalId = null;
+        timerRunning = false;
+        updateTimerUI();
+      } else {
+        if (timerRemainingSec <= 0) timerRemainingSec = 180;
+        startTimer();
+      }
+    }
+
+    // =========================================================================
+    // 4. PLATE CALCULATOR HELPER
+    // =========================================================================
+    function computePlatesPerSide(totalWeight, baseWeight) {
+      const net = Math.max(0, Number(totalWeight) - Number(baseWeight));
+      let perSide = net / 2;
+      const plates = [45, 25, 10, 5, 2.5];
+      const result = [];
+      plates.forEach(p => {
+        const count = Math.floor((perSide + 0.001) / p);
+        if (count > 0) {
+          result.push({ plate: p, count });
+          perSide -= count * p;
+        }
+      });
+      return {
+        perSideTotal: Math.max(0, (Number(totalWeight) - Number(baseWeight)) / 2),
+        stack: result
+      };
+    }
+
+    // =========================================================================
+    // 5. RENDERING FUNCTIONS
+    // =========================================================================
+    function getBestLoggedE1rmForSlot(slotId) {
+      const slot = SLOT_DEFINITIONS.find(s => s.id === slotId);
+      let latestE1rm = slot ? slot.startE1rm : 100;
+      for (let w = 1; w <= 16; w++) {
+        const entry = appState.strengthLogs[`w${w}_${slotId}`];
+        if (entry && entry.weight && entry.reps && entry.rpe) {
+          const e = calculateE1RM(entry.weight, entry.reps, entry.rpe);
+          if (e > 0) latestE1rm = e;
+        }
+      }
+      return latestE1rm;
+    }
+
+    function renderHeaderAndKpis() {
+      const wk = appState.currentWeek;
+      const planWk = SIXTEEN_WEEK_PLAN[wk - 1];
+
+      const weekSel = document.getElementById("weekSelector");
+      if (weekSel && weekSel.options.length === 0) {
+        SIXTEEN_WEEK_PLAN.forEach(item => {
+          const opt = document.createElement("option");
+          opt.value = String(item.wk);
+          opt.textContent = `Week ${item.wk} — ${item.phase.split(":")[0]}`;
+          weekSel.appendChild(opt);
+        });
+      }
+      if (weekSel) weekSel.value = String(wk);
+
+      const badge = document.getElementById("headerBlockBadge");
+      if (badge) badge.textContent = planWk.phase;
+
+      document.getElementById("kpiWeekTitle").textContent = `Week ${wk} of 16`;
+      document.getElementById("kpiWeekSub").textContent = planWk.phase;
+
+      // Count completed slots this week
+      let doneSlots = 0;
+      SLOT_DEFINITIONS.forEach(s => {
+        const log = appState.strengthLogs[`w${wk}_${s.id}`];
+        if (log && ((log.weight && log.weight > 0) || (log.setsDone && log.setsDone.some(Boolean)))) {
+          doneSlots++;
+        }
+      });
+      document.getElementById("kpiLiftsDone").textContent = `${doneSlots} / 12 Slots Logged`;
+
+      document.getElementById("kpiRunTarget").textContent = `${planWk.m1.toFixed(1)} mi Long Run`;
+      const twoRun = (planWk.m1 + planWk.m2).toFixed(1);
+      const threeRun = (planWk.m1 + planWk.m2 + planWk.m3).toFixed(1);
+      document.getElementById("kpiRunSub").textContent = `${twoRun} mi (2x) • ${threeRun} mi (3x)`;
+
+      const bLog = appState.bodyLogs[`w${wk}`];
+      const dispBw = bLog && bLog.bw ? Number(bLog.bw).toFixed(1) : planWk.bw.toFixed(1);
+      const dispBf = bLog && bLog.bf ? Number(bLog.bf).toFixed(1) : planWk.bf.toFixed(1);
+      document.getElementById("kpiBodyTarget").textContent = `${dispBw} lb (${dispBf}% BF)`;
+    }
+
+    function renderGymView() {
+      const wk = appState.currentWeek;
+      const day = appState.currentDay;
+
+      // Update day buttons styling
+      [1, 2, 3].forEach(d => {
+        const btn = document.getElementById(`dayBtn${d}`);
+        if (!btn) return;
+        if (d === day) {
+          btn.className = "day-pill-btn rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-bold text-white shadow";
+        } else {
+          btn.className = "day-pill-btn rounded-xl border border-slate-700 bg-slate-800 px-3.5 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-700";
+        }
+      });
+
+      const container = document.getElementById("gymSlotsContainer");
+      if (!container) return;
+      container.innerHTML = "";
+
+      const autoBtn = document.getElementById("toggleAutoAdjustBtn");
+      if (autoBtn) {
+        const isAuto = appState.autoAdjustTargets !== false;
+        autoBtn.textContent = isAuto
+          ? "⚡ Dynamic Target Scaling (from Prior Logs): ON"
+          : "🔒 Dynamic Target Scaling: OFF (Using Fixed -15% Baseline)";
+        autoBtn.className = isAuto
+          ? "rounded-lg border border-emerald-500/40 bg-emerald-950/30 px-2.5 py-1 text-xs font-semibold text-emerald-300 hover:bg-emerald-900/40"
+          : "rounded-lg border border-slate-700 bg-slate-800 px-2.5 py-1 text-xs font-semibold text-slate-300 hover:bg-slate-700";
+      }
+
+      const daySlots = SLOT_DEFINITIONS.filter(s => s.day === day);
+      daySlots.forEach(slot => {
+        const rx = getWeekPrescriptionForRole(wk, slot.role);
+        const pct = getRpePct(rx.reps, rx.rpe);
+
+        // Find most recent prior logged e1RM (Weeks < wk) if autoAdjustTargets is enabled
+        let refBaseE1rm = slot.startE1rm;
+        let refSourceLabel = `Calibrated from -15% Base (${slot.startE1rm} lb)`;
+        if (appState.autoAdjustTargets !== false && wk > 1) {
+          for (let prevW = wk - 1; prevW >= 1; prevW--) {
+            const pLog = appState.strengthLogs[`w${prevW}_${slot.id}`];
+            if (pLog && Number(pLog.weight) > 0) {
+              const prevRx = getWeekPrescriptionForRole(prevW, slot.role);
+              const loggedPrevE1rm = calculateE1RM(
+                pLog.weight,
+                pLog.reps || prevRx.reps,
+                pLog.rpe || prevRx.rpe
+              );
+              if (loggedPrevE1rm > 0) {
+                refBaseE1rm = Math.round(loggedPrevE1rm / prevRx.progMult);
+                refSourceLabel = `Scaled from Wk ${prevW} e1RM (${loggedPrevE1rm} lb)`;
+                break;
+              }
+            }
+          }
+        }
+
+        const targetE1rm = Math.round(refBaseE1rm * rx.progMult);
+        const suggestedTop = roundToIncrement(targetE1rm * pct, slot.increment);
+        const suggestedBackoff = roundToIncrement(suggestedTop * 0.92, slot.increment);
+
+        const logKey = `w${wk}_${slot.id}`;
+        const existingLog = appState.strengthLogs[logKey] || {
+          weight: "",
+          reps: rx.reps,
+          rpe: rx.rpe,
+          setsDone: Array(rx.sets).fill(false)
+        };
+
+        const activeEx = appState.selectedExercises[slot.id] || slot.defaultExercise;
+        const liveE1rm = existingLog.weight
+          ? calculateE1RM(existingLog.weight, existingLog.reps || rx.reps, existingLog.rpe || rx.rpe)
+          : targetE1rm;
+        const liveBackoff = existingLog.weight
+          ? roundToIncrement(Number(existingLog.weight) * 0.92, slot.increment)
+          : suggestedBackoff;
+        const deltaPct = (((liveE1rm - slot.startE1rm) / slot.startE1rm) * 100).toFixed(1);
+
+        // Plate stack for suggested or logged top weight
+        const refWeightForPlates = Number(existingLog.weight) || suggestedTop;
+        const plateInfo = computePlatesPerSide(refWeightForPlates, 0);
+        const plateStr = plateInfo.stack.length > 0
+          ? plateInfo.stack.map(p => `${p.count}×${p.plate}lb`).join(" + ")
+          : "Pin / Dumbbell Load";
+
+        const card = document.createElement("div");
+        card.className = "rounded-2xl border border-slate-800 bg-slate-900 p-4 shadow-md flex flex-col justify-between";
+
+        const optionsHtml = slot.options.map(opt =>
+          `<option value="${opt}" ${opt === activeEx ? "selected" : ""}>${opt}</option>`
+        ).join("");
+
+        let setsCheckHtml = "";
+        for (let sIdx = 0; sIdx < rx.sets; sIdx++) {
+          const checked = existingLog.setsDone && existingLog.setsDone[sIdx];
+          setsCheckHtml += `
+            <button type="button" data-action="toggle-set" data-slot="${slot.id}" data-set="${sIdx}"
+              class="rounded-lg border px-2.5 py-1 text-xs font-bold transition-all ${
+                checked
+                  ? "border-emerald-500 bg-emerald-600/30 text-emerald-200"
+                  : "border-slate-700 bg-slate-950 text-slate-400 hover:border-slate-600 hover:text-white"
+              }">
+              ${checked ? "✓ " : ""}Set ${sIdx + 1}
+            </button>
+          `;
+        }
+
+        card.innerHTML = `
+          <div>
+            <!-- Slot Header & Exercise Selector -->
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <span class="rounded-lg bg-blue-500/15 px-2.5 py-1 text-xs font-bold text-blue-300 border border-blue-500/30">
+                ${slot.slotName}
+              </span>
+              <span class="text-xs font-semibold text-slate-400">
+                Warm-up: ${slot.warmupSets} sets • Working: <strong class="text-white">${rx.sets} sets × ${rx.reps} reps @ RPE ${rx.rpe.toFixed(1)}</strong> (${(pct * 100).toFixed(1)}%)
+              </span>
+            </div>
+
+            <div class="mt-3">
+              <label class="block text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                Coral Ridge Mall PF Exercise (Tap to Swap Variation)
+              </label>
+              <select data-action="swap-exercise" data-slot="${slot.id}"
+                class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm font-bold text-white focus:border-blue-500 focus:outline-none">
+                ${optionsHtml}
+              </select>
+            </div>
+
+            <!-- Target Loads & Live e1RM Readout Box -->
+            <div class="mt-3 grid grid-cols-3 gap-2 rounded-xl border border-slate-800 bg-slate-950 p-3">
+              <div>
+                <div class="text-[11px] text-slate-400">Suggested Top Set</div>
+                <div class="text-base font-extrabold text-white">${suggestedTop} lb</div>
+                <div class="text-[10px] text-sky-300">${refSourceLabel}</div>
+              </div>
+              <div>
+                <div class="text-[11px] text-slate-400">Back-Off Sets (-8%)</div>
+                <div class="text-base font-extrabold text-amber-300">${liveBackoff} lb</div>
+                <div class="text-[10px] text-slate-400">Remaining ${Math.max(1, rx.sets - 1)} sets</div>
+              </div>
+              <div>
+                <div class="text-[11px] text-slate-400">Live Daily e1RM</div>
+                <div class="text-base font-extrabold text-emerald-400">${liveE1rm} lb</div>
+                <div class="text-[10px] ${Number(deltaPct) >= 0 ? "text-emerald-400" : "text-slate-400"}">
+                  ${Number(deltaPct) >= 0 ? "+" : ""}${deltaPct}% vs -15% Base (${slot.startE1rm} lb)
+                </div>
+              </div>
+            </div>
+
+            <!-- Interactive Top Set Inputs -->
+            <div class="mt-3 grid grid-cols-3 gap-2.5">
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-300">Logged Weight (lb)</label>
+                <input type="number" step="2.5" placeholder="${suggestedTop}" value="${existingLog.weight !== "" ? existingLog.weight : ""}"
+                  data-input="weight" data-slot="${slot.id}"
+                  class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-1.5 text-sm font-bold text-white focus:border-blue-500 focus:outline-none" />
+              </div>
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-300">Logged Reps</label>
+                <input type="number" step="1" min="1" max="20" value="${existingLog.reps || rx.reps}"
+                  data-input="reps" data-slot="${slot.id}"
+                  class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-1.5 text-sm font-bold text-white focus:border-blue-500 focus:outline-none" />
+              </div>
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-300">Logged RPE</label>
+                <input type="number" step="0.5" min="6" max="10" value="${existingLog.rpe || rx.rpe}"
+                  data-input="rpe" data-slot="${slot.id}"
+                  class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-1.5 text-sm font-bold text-white focus:border-blue-500 focus:outline-none" />
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4 space-y-2.5 border-t border-slate-800/80 pt-3">
+            <!-- Set Completion Pills & Log Button -->
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div class="flex flex-wrap items-center gap-1.5">
+                ${setsCheckHtml}
+              </div>
+              <button type="button" data-action="log-set" data-slot="${slot.id}" data-suggested="${suggestedTop}"
+                class="rounded-xl bg-blue-600 px-3.5 py-1.5 text-xs font-bold text-white shadow hover:bg-blue-500">
+                Save Top Set & Start 3m Timer
+              </button>
+            </div>
+
+            <!-- Warm-up & Plate Guide Line -->
+            <div class="flex flex-wrap items-center justify-between gap-1 text-[11px] text-slate-400">
+              <span>Warm-up: <strong class="text-slate-200">${roundToIncrement(refWeightForPlates * 0.5, 5)}lb × 5</strong> → <strong class="text-slate-200">${roundToIncrement(refWeightForPlates * 0.7, 5)}lb × 3</strong> → <strong class="text-slate-200">${roundToIncrement(refWeightForPlates * 0.85, 5)}lb × 1</strong></span>
+              <span>Plates/side: <strong class="text-blue-300">${plateStr}</strong></span>
+            </div>
+            <p class="text-[11px] italic text-slate-400">${slot.notes}</p>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function renderRunView() {
+      const wk = appState.currentWeek;
+      const planWk = SIXTEEN_WEEK_PLAN[wk - 1];
+      const container = document.getElementById("activeWeekRunsContainer");
+      if (!container) return;
+      container.innerHTML = "";
+
+      const runCardsMeta = [
+        {
+          idx: 1,
+          title: "Run 1: Weekend Long Run (Priority #1)",
+          dayTag: "Sat or Sun • Required if running 1x/wk",
+          desc: planWk.r1,
+          targetMi: planWk.m1,
+          zoneTag: "Zone 2 (135–148 bpm • RPE 5–6)",
+          defaultPaceMin: 10.75
+        },
+        {
+          idx: 2,
+          title: "Run 2: Tempo / Goal-Pace (Priority #2)",
+          dayTag: "Tuesday • Add if running 2x/wk",
+          desc: planWk.r2,
+          targetMi: planWk.m2,
+          zoneTag: "Zone 3–4 (148–169 bpm • Goal 9:09/mi)",
+          defaultPaceMin: 9.25
+        },
+        {
+          idx: 3,
+          title: "Run 3: Easy Zone 2 + GPP (Priority #3)",
+          dayTag: "Wed or Fri • Add if running 3x/wk",
+          desc: planWk.r3,
+          targetMi: planWk.m3,
+          zoneTag: "Zone 2 (135–148 bpm) + 8m Back/Core",
+          defaultPaceMin: 11.0
+        }
+      ];
+
+      runCardsMeta.forEach(rm => {
+        const key = `w${wk}_r${rm.idx}`;
+        const log = appState.runLogs[key] || { miles: "", minutes: "", completed: false };
+        const actualMi = Number(log.miles) || rm.targetMi;
+        const actualMin = Number(log.minutes) || Math.round(rm.targetMi * rm.defaultPaceMin);
+        const paceDec = actualMi > 0 ? actualMin / actualMi : 0;
+        const paceMin = Math.floor(paceDec);
+        const paceSec = Math.round((paceDec - paceMin) * 60);
+        const paceFormatted = paceDec > 0 ? `${paceMin}:${String(paceSec === 60 ? 0 : paceSec).padStart(2, "0")} /mi` : "—";
+
+        const card = document.createElement("div");
+        card.className = `rounded-2xl border p-4 shadow-md flex flex-col justify-between ${
+          log.completed ? "border-emerald-500/50 bg-emerald-950/15" : "border-slate-800 bg-slate-900"
+        }`;
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-xs font-bold text-sky-400">${rm.dayTag}</span>
+              <span class="rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+                log.completed ? "bg-emerald-500/20 text-emerald-300" : "bg-slate-800 text-slate-300"
+              }">
+                ${log.completed ? "✓ Completed" : `Target: ${rm.targetMi.toFixed(1)} mi`}
+              </span>
+            </div>
+            <h3 class="mt-1.5 text-sm font-extrabold text-white">${rm.title}</h3>
+            <p class="mt-1 text-xs text-slate-300">${rm.desc}</p>
+            <div class="mt-2 inline-block rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-1 text-[11px] font-semibold text-slate-300">
+              ${rm.zoneTag}
+            </div>
+
+            <div class="mt-3 grid grid-cols-2 gap-2.5">
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-300">Logged Distance (mi)</label>
+                <input type="number" step="0.1" placeholder="${rm.targetMi.toFixed(1)}" value="${log.miles !== "" ? log.miles : ""}"
+                  data-run-input="miles" data-run-idx="${rm.idx}"
+                  class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-1.5 text-sm font-bold text-white focus:border-blue-500 focus:outline-none" />
+              </div>
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-300">Duration (mins)</label>
+                <input type="number" step="1" placeholder="${Math.round(rm.targetMi * rm.defaultPaceMin)}" value="${log.minutes !== "" ? log.minutes : ""}"
+                  data-run-input="minutes" data-run-idx="${rm.idx}"
+                  class="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-1.5 text-sm font-bold text-white focus:border-blue-500 focus:outline-none" />
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4 flex items-center justify-between border-t border-slate-800 pt-3">
+            <div class="text-xs text-slate-400">
+              Avg Pace: <strong class="text-white">${paceFormatted}</strong>
+            </div>
+            <button type="button" data-action="save-run" data-run-idx="${rm.idx}" data-target-mi="${rm.targetMi}" data-default-min="${Math.round(rm.targetMi * rm.defaultPaceMin)}"
+              class="rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all ${
+                log.completed
+                  ? "bg-emerald-600 text-white hover:bg-emerald-500"
+                  : "bg-blue-600 text-white hover:bg-blue-500"
+              }">
+              ${log.completed ? "Update / Uncheck Run" : "Mark Run Complete"}
+            </button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+
+      // Populate 16-week table
+      const tbody = document.getElementById("runRoadmapTableBody");
+      if (!tbody) return;
+      tbody.innerHTML = "";
+      SIXTEEN_WEEK_PLAN.forEach(item => {
+        let loggedMi = 0;
+        [1, 2, 3].forEach(rIdx => {
+          const l = appState.runLogs[`w${item.wk}_r${rIdx}`];
+          if (l && l.completed && Number(l.miles) > 0) {
+            loggedMi += Number(l.miles);
+          }
+        });
+        const tr = document.createElement("tr");
+        tr.className = `cursor-pointer transition-colors ${
+          item.wk === wk ? "bg-blue-950/40 font-semibold text-white" : "text-slate-300 hover:bg-slate-800/50"
+        }`;
+        tr.setAttribute("data-jump-week", String(item.wk));
+        tr.innerHTML = `
+          <td class="px-3 py-2 font-bold text-blue-400">Week ${item.wk}</td>
+          <td class="px-3 py-2">${item.phase}</td>
+          <td class="px-3 py-2">${item.r1}</td>
+          <td class="px-3 py-2">${item.r2}</td>
+          <td class="px-3 py-2">${item.r3}</td>
+          <td class="px-3 py-2 text-right font-mono">${(item.m1 + item.m2).toFixed(1)}</td>
+          <td class="px-3 py-2 text-right font-mono font-bold text-sky-300">${(item.m1 + item.m2 + item.m3).toFixed(1)}</td>
+          <td class="px-3 py-2 text-right font-mono font-bold ${loggedMi > 0 ? "text-emerald-400" : "text-slate-500"}">
+            ${loggedMi > 0 ? loggedMi.toFixed(1) + " mi" : "—"}
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // =========================================================================
+    // 6. CHARTS & DASHBOARD VIEW
+    // =========================================================================
+    let chartE1rmInstance = null;
+    let chartRunInstance = null;
+    let chartBodyInstance = null;
+
+    function renderDashboardView() {
+      const wk = appState.currentWeek;
+      const planWk = SIXTEEN_WEEK_PLAN[wk - 1];
+      document.getElementById("recompCardTitle").textContent = `Week ${wk} Body Recomposition & Nutrition Check-In`;
+
+      const bLog = appState.bodyLogs[`w${wk}`] || { bw: planWk.bw, bf: planWk.bf, waist: "" };
+      const bwInput = document.getElementById("inputBodyweight");
+      const bfInput = document.getElementById("inputBodyFat");
+      const waistInput = document.getElementById("inputWaist");
+      if (bwInput) bwInput.value = bLog.bw !== undefined ? bLog.bw : planWk.bw;
+      if (bfInput) bfInput.value = bLog.bf !== undefined ? bLog.bf : planWk.bf;
+      if (waistInput) waistInput.value = bLog.waist || "";
+
+      const curBw = Number(bLog.bw || planWk.bw);
+      const curBf = Number(bLog.bf || planWk.bf);
+      const fatMass = (curBw * (curBf / 100)).toFixed(1);
+      const lbm = (curBw - Number(fatMass)).toFixed(1);
+      document.getElementById("dashLeanMassReadout").textContent = `${lbm} lbs LBM`;
+      document.getElementById("dashFatMassReadout").textContent = `${fatMass} lbs Fat Mass (${curBf.toFixed(1)}%)`;
+
+      if (typeof Chart === "undefined") return;
+
+      // 1. e1RM Chart
+      const coreSlots = SLOT_DEFINITIONS.slice(0, 8);
+      const labelsE1rm = coreSlots.map(s => s.slotName.replace("Primary ", "").replace("Secondary ", ""));
+      const baseData = coreSlots.map(s => s.startE1rm);
+      const currentData = coreSlots.map(s => getBestLoggedE1rmForSlot(s.id));
+
+      const ctx1 = document.getElementById("chartE1rm");
+      if (ctx1) {
+        if (chartE1rmInstance) chartE1rmInstance.destroy();
+        chartE1rmInstance = new Chart(ctx1, {
+          type: "bar",
+          data: {
+            labels: labelsE1rm,
+            datasets: [
+              {
+                label: "Starting e1RM (-15% Base)",
+                data: baseData,
+                backgroundColor: "rgba(100, 116, 139, 0.7)",
+                borderRadius: 6
+              },
+              {
+                label: "Current / Best Logged e1RM",
+                data: currentData,
+                backgroundColor: "rgba(59, 130, 246, 0.85)",
+                borderRadius: 6
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { labels: { color: "#cbd5e1", font: { size: 11 } } }
+            },
+            scales: {
+              x: { ticks: { color: "#94a3b8", font: { size: 10 } }, grid: { color: "rgba(51,65,85,0.3)" } },
+              y: { ticks: { color: "#94a3b8" }, grid: { color: "rgba(51,65,85,0.4)" } }
+            }
+          }
+        });
+      }
+
+      // 2. Running Mileage Chart
+      const wkLabels = SIXTEEN_WEEK_PLAN.map(p => `W${p.wk}`);
+      const longRunSeries = SIXTEEN_WEEK_PLAN.map(p => p.m1);
+      const threeRunSeries = SIXTEEN_WEEK_PLAN.map(p => Number((p.m1 + p.m2 + p.m3).toFixed(1)));
+      const loggedRunSeries = SIXTEEN_WEEK_PLAN.map(p => {
+        let sum = 0;
+        [1, 2, 3].forEach(rIdx => {
+          const l = appState.runLogs[`w${p.wk}_r${rIdx}`];
+          if (l && l.completed && Number(l.miles) > 0) sum += Number(l.miles);
+        });
+        return sum > 0 ? Number(sum.toFixed(1)) : null;
+      });
+
+      const ctx2 = document.getElementById("chartRunning");
+      if (ctx2) {
+        if (chartRunInstance) chartRunInstance.destroy();
+        chartRunInstance = new Chart(ctx2, {
+          type: "line",
+          data: {
+            labels: wkLabels,
+            datasets: [
+              {
+                label: "Long Run Target (mi)",
+                data: longRunSeries,
+                borderColor: "#38bdf8",
+                backgroundColor: "rgba(56, 189, 248, 0.15)",
+                tension: 0.3,
+                fill: true
+              },
+              {
+                label: "3-Run Weekly Total (mi)",
+                data: threeRunSeries,
+                borderColor: "#818cf8",
+                borderDash: [4, 4],
+                tension: 0.3,
+                fill: false
+              },
+              {
+                label: "Logged Weekly Miles",
+                data: loggedRunSeries,
+                borderColor: "#34d399",
+                backgroundColor: "#34d399",
+                pointRadius: 5,
+                spanGaps: true
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { labels: { color: "#cbd5e1", font: { size: 11 } } }
+            },
+            scales: {
+              x: { ticks: { color: "#94a3b8" }, grid: { color: "rgba(51,65,85,0.3)" } },
+              y: { ticks: { color: "#94a3b8" }, grid: { color: "rgba(51,65,85,0.4)" } }
+            }
+          }
+        });
+      }
+
+      // 3. Body Recomposition Chart
+      const targetBwSeries = SIXTEEN_WEEK_PLAN.map(p => p.bw);
+      const loggedBwSeries = SIXTEEN_WEEK_PLAN.map(p => {
+        const b = appState.bodyLogs[`w${p.wk}`];
+        return b && b.bw ? Number(b.bw) : null;
+      });
+      const targetBfSeries = SIXTEEN_WEEK_PLAN.map(p => p.bf);
+
+      const ctx3 = document.getElementById("chartBodyComp");
+      if (ctx3) {
+        if (chartBodyInstance) chartBodyInstance.destroy();
+        chartBodyInstance = new Chart(ctx3, {
+          type: "line",
+          data: {
+            labels: wkLabels,
+            datasets: [
+              {
+                label: "Target Weight (lb)",
+                data: targetBwSeries,
+                borderColor: "#f59e0b",
+                borderDash: [4, 4],
+                yAxisID: "y",
+                tension: 0.25
+              },
+              {
+                label: "Logged Weight (lb)",
+                data: loggedBwSeries,
+                borderColor: "#10b981",
+                backgroundColor: "#10b981",
+                pointRadius: 5,
+                yAxisID: "y",
+                spanGaps: true
+              },
+              {
+                label: "Target Body Fat (%)",
+                data: targetBfSeries,
+                borderColor: "#c084fc",
+                yAxisID: "y1",
+                tension: 0.25
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { labels: { color: "#cbd5e1", font: { size: 11 } } }
+            },
+            scales: {
+              x: { ticks: { color: "#94a3b8" }, grid: { color: "rgba(51,65,85,0.3)" } },
+              y: {
+                type: "linear",
+                position: "left",
+                min: 162,
+                max: 174,
+                ticks: { color: "#fcd34d" },
+                grid: { color: "rgba(51,65,85,0.4)" }
+              },
+              y1: {
+                type: "linear",
+                position: "right",
+                min: 13,
+                max: 19,
+                ticks: { color: "#c084fc" },
+                grid: { drawOnChartArea: false }
+              }
+            }
+          }
+        });
+      }
+    }
+
+    // =========================================================================
+    // 7. STANDALONE CALCULATORS & RPE REFERENCE TABLE
+    // =========================================================================
+    function renderCalcView() {
+      const w = Number(document.getElementById("calcWeightInput").value) || 150;
+      const r = Number(document.getElementById("calcRepsInput").value) || 5;
+      const rpe = Number(document.getElementById("calcRpeInput").value) || 8;
+
+      const e1rm = calculateE1RM(w, r, rpe);
+      const singleAt8 = roundToIncrement(e1rm * getRpePct(1, 8), 2.5);
+      const backoff = roundToIncrement(w * 0.92, 2.5);
+
+      document.getElementById("calcE1rmOutput").textContent = `${e1rm} lb`;
+      document.getElementById("calcSingleAt8Output").textContent = `${singleAt8} lb`;
+      document.getElementById("calcBackoffOutput").textContent = `${backoff} lb`;
+
+      const prescriptions = [
+        { label: "3 Reps @ RPE 8", reps: 3, rpe: 8 },
+        { label: "4 Reps @ RPE 8", reps: 4, rpe: 8 },
+        { label: "5 Reps @ RPE 7", reps: 5, rpe: 7 },
+        { label: "5 Reps @ RPE 8", reps: 5, rpe: 8 },
+        { label: "6 Reps @ RPE 8", reps: 6, rpe: 8 },
+        { label: "8 Reps @ RPE 7.5", reps: 8, rpe: 7.5 },
+        { label: "10 Reps @ RPE 8", reps: 10, rpe: 8 },
+        { label: "12 Reps @ RPE 8.5", reps: 12, rpe: 8.5 }
+      ];
+
+      const grid = document.getElementById("calcPrescriptionGrid");
+      if (grid) {
+        grid.innerHTML = prescriptions.map(p => {
+          const pct = getRpePct(p.reps, p.rpe);
+          const load = roundToIncrement(e1rm * pct, 2.5);
+          return `
+            <div class="rounded-xl border border-slate-800 bg-slate-950 p-2.5">
+              <div class="text-[11px] font-semibold text-slate-400">${p.label}</div>
+              <div class="text-sm font-extrabold text-white">${load} lb <span class="text-[10px] font-normal text-slate-400">(${(pct * 100).toFixed(1)}%)</span></div>
+            </div>
+          `;
+        }).join("");
+      }
+
+      // Plate Calculator
+      const targetLoad = Number(document.getElementById("plateTargetWeight").value) || 190;
+      const baseLoad = Number(document.getElementById("plateMachineType").value) || 0;
+      const pInfo = computePlatesPerSide(targetLoad, baseLoad);
+      document.getElementById("platePerSideLabel").textContent = `${pInfo.perSideTotal.toFixed(1)} lbs / side`;
+
+      const stackEl = document.getElementById("plateVisualStack");
+      if (stackEl) {
+        if (pInfo.stack.length === 0) {
+          stackEl.innerHTML = `<span class="text-xs text-slate-400">No additional plates needed above base weight.</span>`;
+        } else {
+          const colorMap = {
+            45: "bg-blue-600 border-blue-400 text-white",
+            25: "bg-emerald-600 border-emerald-400 text-white",
+            10: "bg-slate-700 border-slate-400 text-white",
+            5: "bg-amber-600 border-amber-400 text-white",
+            2.5: "bg-purple-600 border-purple-400 text-white"
+          };
+          stackEl.innerHTML = pInfo.stack.map(item => `
+            <span class="inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-extrabold shadow ${colorMap[item.plate] || "bg-slate-800"}">
+              ${item.count} × ${item.plate} lb
+            </span>
+          `).join("");
+        }
+      }
+
+      const wuList = document.getElementById("plateWarmupList");
+      if (wuList) {
+        const wuSteps = [
+          { set: "Warm-Up 1 (Empty / Light)", pct: 0.45, reps: "8 reps @ easy tempo" },
+          { set: "Warm-Up 2 (60% Working Load)", pct: 0.60, reps: "5 reps @ crisp speed" },
+          { set: "Warm-Up 3 (75% Working Load)", pct: 0.75, reps: "3 reps @ RPE < 6" },
+          { set: "Warm-Up 4 (88% Feeler Set)", pct: 0.88, reps: "1–2 reps (gauge daily readiness)" }
+        ];
+        wuList.innerHTML = wuSteps.map(st => {
+          const wLoad = Math.max(baseLoad, roundToIncrement(targetLoad * st.pct, 5));
+          const ps = computePlatesPerSide(wLoad, baseLoad);
+          const psText = ps.stack.length ? ps.stack.map(x => `${x.count}×${x.plate}`).join("+") + "/side" : "Base only";
+          return `
+            <div class="flex items-center justify-between rounded-lg border border-slate-800/80 bg-slate-950 px-3 py-1.5">
+              <span class="font-semibold text-slate-300">${st.set}</span>
+              <span class="font-bold text-white">${wLoad} lb <span class="text-slate-400 font-normal">(${psText} • ${st.reps})</span></span>
+            </div>
+          `;
+        }).join("");
+      }
+
+      // Populate RPE Reference Table once
+      const rpeTbody = document.getElementById("rpeReferenceTableBody");
+      if (rpeTbody && rpeTbody.children.length === 0) {
+        for (let rep = 1; rep <= 12; rep++) {
+          const row = RPE_TABLE[rep];
+          const tr = document.createElement("tr");
+          tr.className = "text-slate-300 hover:bg-slate-800/40";
+          tr.innerHTML = `
+            <td class="px-3 py-2 font-bold text-white">${rep} ${rep === 1 ? "Rep" : "Reps"}</td>
+            <td class="px-3 py-2 text-right font-mono">${(row["10"] * 100).toFixed(1)}%</td>
+            <td class="px-3 py-2 text-right font-mono">${(row["9.5"] * 100).toFixed(1)}%</td>
+            <td class="px-3 py-2 text-right font-mono">${(row["9"] * 100).toFixed(1)}%</td>
+            <td class="px-3 py-2 text-right font-mono">${(row["8.5"] * 100).toFixed(1)}%</td>
+            <td class="px-3 py-2 text-right font-mono font-bold text-blue-400">${(row["8"] * 100).toFixed(1)}%</td>
+            <td class="px-3 py-2 text-right font-mono">${(row["7.5"] * 100).toFixed(1)}%</td>
+            <td class="px-3 py-2 text-right font-mono">${(row["7"] * 100).toFixed(1)}%</td>
+            <td class="px-3 py-2 text-right font-mono">${(row["6.5"] * 100).toFixed(1)}%</td>
+          `;
+          rpeTbody.appendChild(tr);
+        }
+      }
+    }
+
+    function switchTab(tabName) {
+      appState.activeTab = tabName;
+      saveState();
+
+      const tabMap = {
+        gym: document.getElementById("viewGym"),
+        run: document.getElementById("viewRun"),
+        dash: document.getElementById("viewDash"),
+        calc: document.getElementById("viewCalc")
+      };
+
+      Object.keys(tabMap).forEach(k => {
+        if (tabMap[k]) {
+          tabMap[k].classList.toggle("hidden", k !== tabName);
+        }
+      });
+
+      document.querySelectorAll(".nav-tab-btn").forEach(btn => {
+        const isCurrent = btn.getAttribute("data-tab") === tabName;
+        btn.className = isCurrent
+          ? "nav-tab-btn rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition-all sm:text-sm"
+          : "nav-tab-btn rounded-xl bg-slate-800/80 px-3.5 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition-all sm:text-sm";
+      });
+
+      renderHeaderAndKpis();
+      if (tabName === "gym") renderGymView();
+      else if (tabName === "run") renderRunView();
+      else if (tabName === "dash") renderDashboardView();
+      else if (tabName === "calc") renderCalcView();
+    }
+
+    function renderAll() {
+      renderHeaderAndKpis();
+      switchTab(appState.activeTab || "gym");
+    }
+
+    // =========================================================================
+    // 8. EXPORT CSV / BACKUP JSON & EVENT LISTENERS
+    // =========================================================================
+    function exportCsvFile() {
+      const rows = [
+        ["Week", "Phase", "Day", "Slot", "Exercise", "Target Reps", "Target RPE", "Logged Weight (lb)", "Logged Reps", "Logged RPE", "Calculated e1RM (lb)"]
+      ];
+      for (let w = 1; w <= 16; w++) {
+        const phase = SIXTEEN_WEEK_PLAN[w - 1].phase;
+        SLOT_DEFINITIONS.forEach(s => {
+          const rx = getWeekPrescriptionForRole(w, s.role);
+          const log = appState.strengthLogs[`w${w}_${s.id}`] || {};
+          const ex = appState.selectedExercises[s.id] || s.defaultExercise;
+          const e1rm = log.weight ? calculateE1RM(log.weight, log.reps || rx.reps, log.rpe || rx.rpe) : "";
+          rows.push([
+            `Week ${w}`,
+            phase,
+            `Day ${s.day}`,
+            s.slotName,
+            ex,
+            rx.reps,
+            rx.rpe,
+            log.weight || "",
+            log.reps || "",
+            log.rpe || "",
+            e1rm
+          ]);
+        });
+      }
+      const csvContent = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `BBM_Planet_Fitness_Workout_Logs_Wk${appState.currentWeek}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast("Exported workout logs to CSV!");
+    }
+
+    function exportJsonBackup() {
+      const dataStr = JSON.stringify(appState, null, 2);
+      const blob = new Blob([dataStr], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "BBM_Planet_Fitness_Backup.json";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast("Downloaded JSON backup file!");
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      loadState();
+      updateTimerUI();
+      renderAll();
+
+      // Navigation Tabs
+      document.querySelectorAll(".nav-tab-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          switchTab(btn.getAttribute("data-tab"));
+        });
+      });
+
+      // Week Selector & Prev/Next
+      document.getElementById("weekSelector").addEventListener("change", e => {
+        appState.currentWeek = Number(e.target.value) || 1;
+        saveState();
+        renderAll();
+      });
+      document.getElementById("prevWeekBtn").addEventListener("click", () => {
+        if (appState.currentWeek > 1) {
+          appState.currentWeek--;
+          saveState();
+          renderAll();
+        }
+      });
+      document.getElementById("nextWeekBtn").addEventListener("click", () => {
+        if (appState.currentWeek < 16) {
+          appState.currentWeek++;
+          saveState();
+          renderAll();
+        }
+      });
+
+      // Auto-Adjust Target Scaling Toggle
+      const toggleAutoBtn = document.getElementById("toggleAutoAdjustBtn");
+      if (toggleAutoBtn) {
+        toggleAutoBtn.addEventListener("click", () => {
+          appState.autoAdjustTargets = !(appState.autoAdjustTargets !== false);
+          saveState();
+          renderGymView();
+          showToast(
+            appState.autoAdjustTargets
+              ? "Dynamic target scaling ON: future weeks scale from your latest logged e1RM"
+              : "Dynamic target scaling OFF: using fixed -15% baseline curve"
+          );
+        });
+      }
+
+      // Day Selector Buttons
+      [1, 2, 3].forEach(d => {
+        document.getElementById(`dayBtn${d}`).addEventListener("click", () => {
+          appState.currentDay = d;
+          saveState();
+          renderGymView();
+        });
+      });
+
+      // Rest Timer Controls
+      document.getElementById("timerStartPauseBtn").addEventListener("click", toggleTimer);
+      document.getElementById("timerPreset120Btn").addEventListener("click", () => startTimer(120));
+      document.getElementById("timerPreset180Btn").addEventListener("click", () => startTimer(180));
+      document.getElementById("timerResetBtn").addEventListener("click", () => {
+        if (timerIntervalId) clearInterval(timerIntervalId);
+        timerIntervalId = null;
+        timerRunning = false;
+        timerRemainingSec = 180;
+        updateTimerUI();
+      });
+      document.getElementById("timerMuteBtn").addEventListener("click", () => {
+        appState.soundMuted = !appState.soundMuted;
+        saveState();
+        updateTimerUI();
+        showToast(appState.soundMuted ? "Timer audio muted" : "Timer audio enabled");
+      });
+
+      // Delegated Events for Gym Floor Logger
+      document.getElementById("gymSlotsContainer").addEventListener("change", e => {
+        const target = e.target;
+        const slotId = target.getAttribute("data-slot");
+        if (!slotId) return;
+
+        if (target.getAttribute("data-action") === "swap-exercise") {
+          appState.selectedExercises[slotId] = target.value;
+          saveState();
+          renderGymView();
+          showToast(`Swapped exercise to ${target.value}`);
+          return;
+        }
+
+        const inputField = target.getAttribute("data-input");
+        if (inputField) {
+          const wk = appState.currentWeek;
+          const slot = SLOT_DEFINITIONS.find(s => s.id === slotId);
+          const rx = getWeekPrescriptionForRole(wk, slot.role);
+          const key = `w${wk}_${slotId}`;
+          if (!appState.strengthLogs[key]) {
+            appState.strengthLogs[key] = { weight: "", reps: rx.reps, rpe: rx.rpe, setsDone: Array(rx.sets).fill(false) };
+          }
+          appState.strengthLogs[key][inputField] = target.value;
+          saveState();
+          renderHeaderAndKpis();
+          renderGymView();
+        }
+      });
+
+      document.getElementById("gymSlotsContainer").addEventListener("click", e => {
+        const btn = e.target.closest("button");
+        if (!btn) return;
+        const action = btn.getAttribute("data-action");
+        const slotId = btn.getAttribute("data-slot");
+        if (!slotId) return;
+
+        const wk = appState.currentWeek;
+        const slot = SLOT_DEFINITIONS.find(s => s.id === slotId);
+        const rx = getWeekPrescriptionForRole(wk, slot.role);
+        const key = `w${wk}_${slotId}`;
+        if (!appState.strengthLogs[key]) {
+          appState.strengthLogs[key] = { weight: "", reps: rx.reps, rpe: rx.rpe, setsDone: Array(rx.sets).fill(false) };
+        }
+
+        if (action === "toggle-set") {
+          const setIdx = Number(btn.getAttribute("data-set"));
+          if (!Array.isArray(appState.strengthLogs[key].setsDone)) {
+            appState.strengthLogs[key].setsDone = Array(rx.sets).fill(false);
+          }
+          appState.strengthLogs[key].setsDone[setIdx] = !appState.strengthLogs[key].setsDone[setIdx];
+          saveState();
+          renderHeaderAndKpis();
+          renderGymView();
+        } else if (action === "log-set") {
+          if (!appState.strengthLogs[key].weight) {
+            appState.strengthLogs[key].weight = Number(btn.getAttribute("data-suggested"));
+          }
+          if (!Array.isArray(appState.strengthLogs[key].setsDone)) {
+            appState.strengthLogs[key].setsDone = Array(rx.sets).fill(false);
+          }
+          appState.strengthLogs[key].setsDone[0] = true;
+          saveState();
+          const e1rm = calculateE1RM(
+            appState.strengthLogs[key].weight,
+            appState.strengthLogs[key].reps || rx.reps,
+            appState.strengthLogs[key].rpe || rx.rpe
+          );
+          renderHeaderAndKpis();
+          renderGymView();
+          startTimer(180);
+          showToast(`Logged Top Set! Live Daily e1RM = ${e1rm} lbs • 3:00 Rest Timer Started`);
+        }
+      });
+
+      // Delegated Events for Running View
+      document.getElementById("activeWeekRunsContainer").addEventListener("change", e => {
+        const target = e.target;
+        const runIdx = target.getAttribute("data-run-idx");
+        const field = target.getAttribute("data-run-input");
+        if (!runIdx || !field) return;
+        const key = `w${appState.currentWeek}_r${runIdx}`;
+        if (!appState.runLogs[key]) {
+          appState.runLogs[key] = { miles: "", minutes: "", completed: false };
+        }
+        appState.runLogs[key][field] = target.value;
+        saveState();
+        renderRunView();
+      });
+
+      document.getElementById("activeWeekRunsContainer").addEventListener("click", e => {
+        const btn = e.target.closest("button[data-action='save-run']");
+        if (!btn) return;
+        const runIdx = btn.getAttribute("data-run-idx");
+        const key = `w${appState.currentWeek}_r${runIdx}`;
+        if (!appState.runLogs[key]) {
+          appState.runLogs[key] = { miles: "", minutes: "", completed: false };
+        }
+        if (!appState.runLogs[key].miles) {
+          appState.runLogs[key].miles = Number(btn.getAttribute("data-target-mi"));
+        }
+        if (!appState.runLogs[key].minutes) {
+          appState.runLogs[key].minutes = Number(btn.getAttribute("data-default-min"));
+        }
+        appState.runLogs[key].completed = !appState.runLogs[key].completed;
+        saveState();
+        renderHeaderAndKpis();
+        renderRunView();
+        showToast(appState.runLogs[key].completed ? `Run ${runIdx} logged for Week ${appState.currentWeek}!` : `Run ${runIdx} marked incomplete`);
+      });
+
+      document.getElementById("runRoadmapTableBody").addEventListener("click", e => {
+        const tr = e.target.closest("tr[data-jump-week]");
+        if (!tr) return;
+        appState.currentWeek = Number(tr.getAttribute("data-jump-week")) || 1;
+        saveState();
+        renderHeaderAndKpis();
+        renderRunView();
+        showToast(`Switched to Week ${appState.currentWeek}`);
+      });
+
+      // Biometrics Save
+      document.getElementById("saveBiometricsBtn").addEventListener("click", () => {
+        const bw = Number(document.getElementById("inputBodyweight").value) || 170;
+        const bf = Number(document.getElementById("inputBodyFat").value) || 17;
+        const waist = document.getElementById("inputWaist").value;
+        appState.bodyLogs[`w${appState.currentWeek}`] = { bw, bf, waist };
+        saveState();
+        renderHeaderAndKpis();
+        renderDashboardView();
+        showToast(`Saved Week ${appState.currentWeek} Biometrics (${bw.toFixed(1)} lb, ${bf.toFixed(1)}% BF)`);
+      });
+
+      // Standalone Calculators
+      ["calcWeightInput", "calcRepsInput", "calcRpeInput", "plateTargetWeight", "plateMachineType"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.addEventListener("input", renderCalcView);
+          el.addEventListener("change", renderCalcView);
+        }
+      });
+
+      // Quick Copy Backup
+      const quickCopyBtn = document.getElementById("quickCopyBackupBtn");
+      if (quickCopyBtn) {
+        quickCopyBtn.addEventListener("click", () => {
+          const dataStr = JSON.stringify(appState);
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(dataStr).then(() => {
+              showToast("Copied full backup JSON to clipboard!");
+            }).catch(() => {
+              fallbackCopyText(dataStr);
+            });
+          } else {
+            fallbackCopyText(dataStr);
+          }
+        });
+      }
+
+      function fallbackCopyText(text) {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+          document.execCommand("copy");
+          showToast("Copied full backup JSON to clipboard!");
+        } catch(e) {
+          showToast("Unable to copy automatically — use Backup button.");
+        }
+        document.body.removeChild(ta);
+      }
+
+      // Export / Import / Reset Controls
+      document.getElementById("exportCsvBtn").addEventListener("click", exportCsvFile);
+      document.getElementById("exportJsonBtn").addEventListener("click", exportJsonBackup);
+
+      const resetModal = document.getElementById("resetModal");
+      document.getElementById("openResetModalBtn").addEventListener("click", () => {
+        resetModal.classList.remove("hidden");
+        resetModal.classList.add("flex");
+      });
+      document.getElementById("cancelResetBtn").addEventListener("click", () => {
+        resetModal.classList.add("hidden");
+        resetModal.classList.remove("flex");
+      });
+      document.getElementById("confirmResetBtn").addEventListener("click", () => {
+        appState = createDefaultState();
+        saveState();
+        resetModal.classList.add("hidden");
+        resetModal.classList.remove("flex");
+        renderAll();
+        showToast("All workout and run data reset to Week 1 defaults.");
+      });
+
+      const importModal = document.getElementById("importModal");
+      document.getElementById("openImportModalBtn").addEventListener("click", () => {
+        importModal.classList.remove("hidden");
+        importModal.classList.add("flex");
+      });
+      document.getElementById("closeImportModalBtn").addEventListener("click", () => {
+        importModal.classList.add("hidden");
+        importModal.classList.remove("flex");
+      });
+      document.getElementById("importFileInput").addEventListener("change", e => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+          document.getElementById("importJsonTextarea").value = String(ev.target.result || "");
+        };
+        reader.readAsText(file);
+      });
+      document.getElementById("applyImportBtn").addEventListener("click", () => {
+        try {
+          const raw = document.getElementById("importJsonTextarea").value.trim();
+          const parsed = JSON.parse(raw);
+          appState = Object.assign(createDefaultState(), parsed);
+          saveState();
+          importModal.classList.add("hidden");
+          importModal.classList.remove("flex");
+          renderAll();
+          showToast("Backup imported successfully!");
+        } catch (err) {
+          showToast("Invalid JSON format — please check your backup text.");
+        }
+      });
+    });
+  </script>
+</body>
+</html>
